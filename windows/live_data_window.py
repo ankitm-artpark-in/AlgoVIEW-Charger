@@ -11,58 +11,52 @@ class live_data_window(QWidget):
     def __init__(self, send_command_callback=None):
         super().__init__()
         self.setWindowTitle('Live Data')
-        self.tables = {}  # Store tables by group/parameter
         self.send_command_callback = send_command_callback
+        self.groups = {
+            "Brick A": ["Cell 1", "Cell 2", "Cell 3", "Cell 4"],
+            "Brick B": ["Cell 5", "Cell 6", "Cell 7", "Cell 8"],
+            "Charger ViT": ["Charger Voltage", "Charger Current", "Charger Temp", "Charger AC Value"],
+            "Temp Data": ["Volta Max Temp", "Volta Avg Temp", "Ambient Temp"],
+            "Debug Messages": ["Cell Count", "Charger On Status", "Current Count", "Voltage Count", "Cell Balance Status"],
+            "Debug Messages 2": ["Charger Safety Off", "Battery Vtg read value", "Charger state", "Charger O/P On", "Volta Heartbeat", "Charger Error Flag"]
+        }
+        self.selected_params = set()
+        self.latest_data = {}
+        self.param_labels = {}  # (group, param): QLabel
+        self.display_rows = []  # Store table rows for cleanup
         self.setup_ui()
 
     def update_live_data(self, message):
         parsed = parse_message(message)
         msg_type = parsed['type']
         data = parsed['data']
-        # Map message type to table and update values
-        if msg_type == 'Brick_A':
-            self.update_table('Brick A', data)
-        elif msg_type == 'Brick_B':
-            self.update_table('Brick B', data)
-        elif msg_type == 'Charger_VIT':
-            self.update_table('Charger ViT', data)
-        elif msg_type == 'TEMP_DATA':
-            self.update_table('Temp Data', data)
-        elif msg_type == 'Debug_Message_1':
-            self.update_table('Debug Messages', data)
-        elif msg_type == 'Debug_Message_2':
-            self.update_table('Debug Messages 2', data)
-        # Add more as needed
+        self.latest_data.update(data)
+        self.refresh_selected_data()
 
-    def update_table(self, group, data):
-        table = self.tables.get(group)
-        if not table:
-            return
-        for i in range(table.rowCount()):
-            param = table.item(i, 0).text()
-            if param in data:
-                table.setItem(i, 1, QTableWidgetItem(str(data[param])))
+    def refresh_selected_data(self):
+        # Remove all rows from the table
+        self.data_table.setRowCount(0)
+        self.param_labels.clear()
+        row = 0
+        for group, params in self.groups.items():
+            for param in params:
+                if (group, param) in self.selected_params:
+                    value = self.latest_data.get(param, "-")
+                    self.data_table.insertRow(row)
+                    from PyQt5.QtWidgets import QTableWidgetItem
+                    group_item = QTableWidgetItem(group)
+                    param_item = QTableWidgetItem(param)
+                    value_item = QTableWidgetItem(str(value))
+                    self.data_table.setItem(row, 0, group_item)
+                    self.data_table.setItem(row, 1, param_item)
+                    self.data_table.setItem(row, 2, value_item)
+                    self.param_labels[(group, param)] = value_item
+                    row += 1
+
 
     def setup_ui(self):
         from PyQt5.QtGui import QFont
-        def create_group_box(title, parameters):
-            box = QGroupBox(title)
-            layout = QVBoxLayout()
-            table = QTableWidget(len(parameters), 2)
-            table.setHorizontalHeaderLabels(['Parameter', 'Data'])
-            table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            table.verticalHeader().setVisible(False)
-            table.setEditTriggers(QTableWidget.NoEditTriggers)
-            table.setSelectionMode(QTableWidget.NoSelection)
-            table.setStyleSheet("QTableWidget::item { padding-left: 2px; padding-right: 2px; }")
-            for i, param in enumerate(parameters):
-                table.setItem(i, 0, QTableWidgetItem(param))
-                table.setItem(i, 1, QTableWidgetItem(""))
-            layout.addWidget(table)
-            box.setLayout(layout)
-            self.tables[title] = table
-            return box
-
+        from PyQt5.QtWidgets import QComboBox, QCheckBox, QTreeWidget, QTreeWidgetItem, QHBoxLayout, QSizePolicy, QWidget, QVBoxLayout, QLabel
         main_layout = QVBoxLayout(self)
 
         # --- Transmission Control Group (fixed at top) ---
@@ -75,13 +69,10 @@ class live_data_window(QWidget):
 
         self.reception_on_button = QPushButton('Reception ON')
         self.reception_on_button.setFont(default_font)
-        # self.reception_on_button.setEnabled(False)
         self.reception_off_button = QPushButton('Reception OFF')
         self.reception_off_button.setFont(default_font)
-        # self.reception_off_button.setEnabled(False)
         self.reception_once_button = QPushButton('Reception ONCE')
         self.reception_once_button.setFont(default_font)
-        # self.reception_once_button.setEnabled(False)
 
         if self.send_command_callback:
             self.reception_on_button.clicked.connect(lambda: self.send_command_callback("Reception_ON"))
@@ -94,34 +85,65 @@ class live_data_window(QWidget):
         transmission_group.setLayout(transmission_layout)
         main_layout.addWidget(transmission_group)
 
-        # --- Main Data Area (scrollable) ---
+        # --- Group/Parameter selection area (in a fixed-width container) ---
+        tree_container = QWidget()
+        tree_layout = QVBoxLayout(tree_container)
+        tree_layout.setContentsMargins(0, 0, 0, 0)
+        tree_layout.setSpacing(0)
+
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabels(["Group", "Parameter"])
+        self.tree.setColumnCount(2)
+        self.tree.setRootIsDecorated(False)
+        self.tree.setAlternatingRowColors(True)
+        self.tree.setSelectionMode(QTreeWidget.NoSelection)
+        self.tree.setMaximumHeight(350)
+
+        for group, params in self.groups.items():
+            group_item = QTreeWidgetItem([group, ""])
+            for param in params:
+                param_item = QTreeWidgetItem(["", param])
+                param_item.setCheckState(0, 0)  # Unchecked
+                group_item.addChild(param_item)
+            self.tree.addTopLevelItem(group_item)
+            group_item.setExpanded(False)  # Keep collapsed by default
+
+        self.tree.itemChanged.connect(self.on_tree_item_changed)
+        tree_layout.addWidget(self.tree)
+
+        # Set the width policy to take 30% of the parent width
+        tree_container.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        tree_container.setMinimumWidth(200)
+        tree_container.setMaximumWidth(400)
+
+
+        # --- Data display area (table) ---
+        from PyQt5.QtWidgets import QTableWidget, QHeaderView
+        self.data_table = QTableWidget(0, 3)
+        self.data_table.setMinimumHeight(300)
+        self.data_table.setHorizontalHeaderLabels(["Group", "Parameter", "Value"])
+        self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.data_table.verticalHeader().setVisible(False)
+        self.data_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.data_table.setSelectionMode(QTableWidget.NoSelection)
+
+        # --- Main horizontal layout for selection and data display ---
         h_layout = QHBoxLayout()
-
-        brick_a_box = create_group_box("Brick A", ["Cell 1", "Cell 2", "Cell 3", "Cell 4"])
-        brick_b_box = create_group_box("Brick B", ["Cell 5", "Cell 6", "Cell 7", "Cell 8"])
-        charger_box = create_group_box("Charger ViT", ["Charger Voltage", "Charger Current", "Charger Temp", "Charger AC Value"])
-        temp_box = create_group_box("Temp Data", ["Volta Max Temp", "Volta Avg Temp", "Ambient Temp"])
-        debug_msg_1 = create_group_box("Debug Messages", ["Cell Count", "Charger On Status", "Current Count", "Voltage Count", "Cell Balance Status"])
-        debug_msg_2 = create_group_box("Debug Messages 2", ["Charger Safety Off", "Battery Vtg read value", "Charger state", "Charger O/P On", "Volta Heartbeat", "Charger Error Flag"])
-
-        left_layout = QVBoxLayout()
-        left_layout.addWidget(brick_a_box)
-        left_layout.addWidget(brick_b_box)
-        left_layout.addWidget(charger_box)
-        left_layout.addWidget(temp_box)
-        left_layout.addWidget(debug_msg_1)
-        left_layout.addWidget(debug_msg_2)
-
-        left_widget = QWidget()
-        left_widget.setLayout(left_layout)
-
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setWidget(left_widget)
-        h_layout.addWidget(scroll_area, stretch=1)
-
-        # Placeholder for the rest of the window (right side)
-        right_placeholder = QLabel('Live Data Display Area')
-        h_layout.addWidget(right_placeholder, stretch=3)
-
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_layout.setSpacing(8)
+        h_layout.addWidget(tree_container, 1)
+        h_layout.addWidget(self.data_table, 2)
         main_layout.addLayout(h_layout)
+        main_layout.addStretch(1)
+
+    def on_tree_item_changed(self, item, column):
+        # Update selected_params set based on checkbox state
+        if item.parent() is not None:
+            group = item.parent().text(0)
+            param = item.text(1)
+            checked = item.checkState(0) == 2
+            if checked:
+                self.selected_params.add((group, param))
+            else:
+                self.selected_params.discard((group, param))
+            self.refresh_selected_data()

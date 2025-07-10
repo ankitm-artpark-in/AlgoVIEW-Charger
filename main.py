@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QToolBar, QAction
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QTabWidget
 from widgets.connection_settings import ConnectionSettings
 from windows.live_data_window import live_data_window
 from windows.sd_card_data_window import sd_card_data_window
@@ -16,9 +16,6 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('AlgoVIEW-Charger')
-        self.live_data_view = None
-        self.sd_card_data_view = None
-        self.database_view = None
         self.current_device = 0x01  # Default device, can be set elsewhere
         self.buffer = bytearray()
         self.timer = QTimer(self)
@@ -64,36 +61,52 @@ class MainWindow(QMainWindow):
             send_raw_message(self, msg)
 
     def setup_ui(self):
-        toolbar = QToolBar("Toolbar")
-        self.addToolBar(toolbar)
-
-        live_data_action = QAction('Live Data', self)
-        sd_card_action = QAction('SD Card Data', self)
-        database_action = QAction('Database', self)
-
-        live_data_action.triggered.connect(self.live_data_window)
-        sd_card_action.triggered.connect(self.sd_card_data_window)
-        database_action.triggered.connect(self.database_window)
-
-        toolbar.addAction(live_data_action)
-        toolbar.addAction(sd_card_action)
-        toolbar.addAction(database_action)
-
-        # Three dots menu
-        more_button, admin_action = create_more_menu(self)
-        toolbar.addWidget(more_button)
-
         # --- Connection Settings Section ---
         self.connection_settings = ConnectionSettings()
-        central_widget = QWidget()
-        central_layout = QVBoxLayout(central_widget)
-        central_layout.addWidget(self.connection_settings)
 
-        self.central_placeholder = QWidget()
-        central_layout.addWidget(self.central_placeholder)
-        self.setCentralWidget(central_widget)
+        # Create the tab widget
+        self.tabs = QTabWidget()
+        # Create the tab pages (screens)
+        self.live_data_tab = QWidget()
+        self.sd_card_tab = QWidget()
+        self.database_tab = QWidget()
 
-        self.central_layout = central_layout
+        # Add tabs
+        self.tabs.addTab(self.live_data_tab, "Live Data")
+        self.tabs.addTab(self.sd_card_tab, "SD Card Data")
+        self.tabs.addTab(self.database_tab, "Database")
+
+        # Layout for each tab (remove margins and paddings)
+        self.live_data_view = live_data_window(send_command_callback=self.send_command)
+        live_data_layout = QVBoxLayout()
+        live_data_layout.setContentsMargins(0, 0, 0, 0)
+        live_data_layout.setSpacing(0)
+        live_data_layout.addWidget(self.live_data_view)
+        self.live_data_tab.setLayout(live_data_layout)
+
+        self.sd_card_data_view = sd_card_data_window()
+        sd_card_layout = QVBoxLayout()
+        sd_card_layout.setContentsMargins(0, 0, 0, 0)
+        sd_card_layout.setSpacing(0)
+        sd_card_layout.addWidget(self.sd_card_data_view)
+        self.sd_card_tab.setLayout(sd_card_layout)
+
+        self.database_view = DatabaseWindow()
+        database_layout = QVBoxLayout()
+        database_layout.setContentsMargins(0, 0, 0, 0)
+        database_layout.setSpacing(0)
+        database_layout.addWidget(self.database_view)
+        self.database_tab.setLayout(database_layout)
+
+        # Main layout: connection settings always on top
+        main_widget = QWidget()
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(self.connection_settings)
+
+        main_layout.addSpacing(16)  # vertical space between connection settings and tabs
+        main_layout.addWidget(self.tabs)
+        self.setCentralWidget(main_widget)
 
         # Connect button signals to methods
         self.connection_settings.refresh_clicked.connect(self.refresh_ports)
@@ -126,27 +139,7 @@ class MainWindow(QMainWindow):
         )
         
     # --- Window Management ---
-    def live_data_window(self):
-        if self.live_data_view is None or not self.live_data_view.isVisible():
-            self.live_data_view = live_data_window(send_command_callback=self.send_command)
-        self.live_data_view.show()
-
-    def sd_card_data_window(self):
-        if self.sd_card_data_view is None or not self.sd_card_data_view.isVisible():
-            self.sd_card_data_view = sd_card_data_window()
-        self.sd_card_data_view.show()
-
-    def database_window(self):
-        # Toggle database view
-        if hasattr(self, 'database_widget_item') and self.database_widget_item is not None:
-            self.central_layout.removeWidget(self.database_widget_item)
-            self.database_widget_item.setParent(None)
-            self.database_widget_item = None
-            return
-
-        self.database_view = DatabaseWindow()
-        self.central_layout.addWidget(self.database_view)
-        self.database_widget_item = self.database_view
+    # No popups, all screens are tabs now
 
 def main():
     app = QApplication(sys.argv)

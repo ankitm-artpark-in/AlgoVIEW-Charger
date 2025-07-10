@@ -1,13 +1,19 @@
+
+from .serial_global import serial_port
+
 def disconnect_serial(
     connect_button, disconnect_button, port_combo, refresh_button,
     parent=None
 ):
-    if hasattr(parent, 'serial_port') and parent.serial_port:
+    global serial_port
+    if serial_port:
         try:
-            if parent.serial_port.is_open:
-                parent.serial_port.close()
+            if serial_port.is_open:
+                serial_port.close()
+                print("Disconnected from serial port")
         except:
             pass
+        serial_port = None
     connect_button.setEnabled(True)
     disconnect_button.setEnabled(False)
     port_combo.setEnabled(True)
