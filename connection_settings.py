@@ -1,11 +1,11 @@
-from PyQt5.QtWidgets import QGroupBox, QHBoxLayout, QComboBox, QPushButton, QLabel, QSizePolicy
-from PyQt5.QtGui import QFont
-from PyQt5.QtCore import pyqtSignal, QObject
+from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QComboBox, QPushButton, QLabel, QSizePolicy
+from PySide6.QtGui import QFont
+from PySide6.QtCore import Signal
 
 class ConnectionSettings(QGroupBox):
-    connect_clicked = pyqtSignal()
-    disconnect_clicked = pyqtSignal()
-    refresh_clicked = pyqtSignal()
+    connect_clicked = Signal()
+    disconnect_clicked = Signal()
+    refresh_clicked = Signal()
 
     def __init__(self, parent=None):
         super().__init__('Connection Settings', parent)
@@ -13,8 +13,8 @@ class ConnectionSettings(QGroupBox):
         default_font.setPointSize(11)
         self.setFont(default_font)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setMaximumHeight(80)
-        self.setMinimumHeight(80)
+        self.setMaximumHeight(120)
+        self.setMinimumHeight(120)
 
         layout = QHBoxLayout()
         layout.setSpacing(15)

@@ -1,151 +1,77 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QTabWidget
-from widgets.connection_settings import ConnectionSettings
-from windows.live_data_window import live_data_window
-from windows.sd_card_data_window import sd_card_data_window
-from windows.database_window import DatabaseWindow
 import sys
-from serial_utils.refresh_ports import refresh_ports
-from serial_utils.connect_serial import connect_serial
-from serial_utils.disconnect_serial import disconnect_serial
-from widgets.more_menu import create_more_menu
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QMessageBox, QGroupBox, QHBoxLayout, QComboBox, QPushButton, QLabel, QSizePolicy
+)
 
+from PySide6.QtGui import QFont
+from PySide6.QtCore import Signal, QTimer
 
-from PyQt5.QtCore import QTimer
+from refresh_ports import refresh_ports
+from connect_serial import connect_serial
+from disconnect_serial import disconnect_serial
+from handle_disconnect import handle_disconnect
+from connection_settings import ConnectionSettings
+from read_serial import read_serial
 
-class MainWindow(QMainWindow):
+# Tabs below connection settings
+from PySide6.QtWidgets import QTabWidget
+from tab_one_screen import TabOneScreen
+from tab_two_screen import TabTwoScreen
+from tab_three_screen import TabThreeScreen
+
+class SerialPortGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('AlgoVIEW-Charger')
-        self.current_device = 0x01  # Default device, can be set elsewhere
+        self.setWindowTitle("Serial Port Manager")
+        self.serial_obj = None
         self.buffer = bytearray()
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.read_serial)
-        self.timer.start(100)  # Poll every 100 ms
-        self.setup_ui()
+        self.layout = QVBoxLayout()
 
-    def read_serial(self):
-        # Use the modular read_serial to fill self.buffer and extract messages
-        if not hasattr(self, 'serial_port') or not self.serial_port:
-            return
-        try:
-            if self.serial_port.is_open:
-                import serial
-                if self.serial_port.in_waiting:
-                    self.buffer.extend(self.serial_port.read(self.serial_port.in_waiting))
-                    # Process all complete messages (15 bytes, 0x01 start, 0x02 end)
-                    while len(self.buffer) >= 15:
-                        if self.buffer[0] == 0x01 and self.buffer[14] == 0x02:
-                            msg = self.buffer[:15]
-                            # Update live data window if open
-                            if self.live_data_view and self.live_data_view.isVisible():
-                                self.live_data_view.update_live_data(msg)
-                            self.buffer = self.buffer[15:]
-                        else:
-                            self.buffer = self.buffer[1:]
-        except (Exception,) as e:
-            # Optionally handle disconnect or error
-            pass
+        # Set up timer for serial reading
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.read_serial_data)
+        self.timer.setInterval(100)  # 100ms interval
 
-    def send_command(self, command):
-        if hasattr(self, 'serial_port') and self.serial_port and self.serial_port.is_open:
-            if command == "Reception_ON":
-                msg = bytes([self.current_device, 0xAA, 0x00, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-            elif command == "Reception_OFF":
-                msg = bytes([self.current_device, 0xAA, 0x00, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-            elif command == "Reception_ONCE":
-                msg = bytes([self.current_device, 0xAA, 0x00, 0xAE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-            else:
-                return
-            # Import and call send_raw_message from serial_utils
-            from serial_utils.send_raw_message import send_raw_message
-            send_raw_message(self, msg)
+        # Connection settings at the top
+        self.connection_settings = ConnectionSettings(self)
+        self.layout.addWidget(self.connection_settings)
 
-    def setup_ui(self):
-        # --- Connection Settings Section ---
-        self.connection_settings = ConnectionSettings()
-
-        # Create the tab widget
         self.tabs = QTabWidget()
-        # Create the tab pages (screens)
-        self.live_data_tab = QWidget()
-        self.sd_card_tab = QWidget()
-        self.database_tab = QWidget()
+        self.tab_one = TabOneScreen(self)
+        self.tab_two = TabTwoScreen(self)
+        self.tab_three = TabThreeScreen(self)
+        self.tabs.addTab(self.tab_one, "Tab 1")
+        self.tabs.addTab(self.tab_two, "Tab 2")
+        self.tabs.addTab(self.tab_three, "Tab 3")
+        self.layout.addWidget(self.tabs)
 
-        # Add tabs
-        self.tabs.addTab(self.live_data_tab, "Live Data")
-        self.tabs.addTab(self.sd_card_tab, "SD Card Data")
-        self.tabs.addTab(self.database_tab, "Database")
+        self.setLayout(self.layout)
 
-        # Layout for each tab (remove margins and paddings)
-        self.live_data_view = live_data_window(send_command_callback=self.send_command)
-        live_data_layout = QVBoxLayout()
-        live_data_layout.setContentsMargins(0, 0, 0, 0)
-        live_data_layout.setSpacing(0)
-        live_data_layout.addWidget(self.live_data_view)
-        self.live_data_tab.setLayout(live_data_layout)
-
-        self.sd_card_data_view = sd_card_data_window()
-        sd_card_layout = QVBoxLayout()
-        sd_card_layout.setContentsMargins(0, 0, 0, 0)
-        sd_card_layout.setSpacing(0)
-        sd_card_layout.addWidget(self.sd_card_data_view)
-        self.sd_card_tab.setLayout(sd_card_layout)
-
-        self.database_view = DatabaseWindow()
-        database_layout = QVBoxLayout()
-        database_layout.setContentsMargins(0, 0, 0, 0)
-        database_layout.setSpacing(0)
-        database_layout.addWidget(self.database_view)
-        self.database_tab.setLayout(database_layout)
-
-        # Main layout: connection settings always on top
-        main_widget = QWidget()
-        main_layout = QVBoxLayout(main_widget)
-        main_layout.setSpacing(0)
-        main_layout.addWidget(self.connection_settings)
-
-        main_layout.addSpacing(16)  # vertical space between connection settings and tabs
-        main_layout.addWidget(self.tabs)
-        self.setCentralWidget(main_widget)
-
-        # Connect button signals to methods
+        # Connect signals to slots
         self.connection_settings.refresh_clicked.connect(self.refresh_ports)
-        self.connection_settings.connect_clicked.connect(self.connect_serial)
-        self.connection_settings.disconnect_clicked.connect(self.disconnect_serial)
+        self.connection_settings.connect_clicked.connect(self.connect_port)
+        self.connection_settings.disconnect_clicked.connect(self.disconnect_port)
 
-    # --- Connection Settings Functionalities ---
+        self.refresh_ports()
+        self.showMaximized()
+
     def refresh_ports(self):
-        refresh_ports(self.connection_settings.port_combo)
+        refresh_ports(self.connection_settings.port_combo, self)
 
-    def connect_serial(self):
-        if not hasattr(self, 'serial_port'):
-            self.serial_port = None
-            
-        connect_serial(
-            self.connection_settings.connect_button,
-            self.connection_settings.disconnect_button,
-            self.connection_settings.port_combo,
-            self.connection_settings.refresh_button,
-            parent=self
-        )
+    def connect_port(self):
+        self.serial_obj = connect_serial(self.connection_settings.port_combo, self.connection_settings, self)
+        if self.serial_obj and self.serial_obj.is_open:
+            self.timer.start()
 
-    def disconnect_serial(self):
-        disconnect_serial(
-            self.connection_settings.connect_button,
-            self.connection_settings.disconnect_button,
-            self.connection_settings.port_combo,
-            self.connection_settings.refresh_button,
-            parent=self
-        )
-        
-    # --- Window Management ---
-    # No popups, all screens are tabs now
+    def disconnect_port(self):
+        self.timer.stop()
+        self.serial_obj = disconnect_serial(self.serial_obj, self.connection_settings, self)
 
-def main():
+    def read_serial_data(self):
+        read_serial(self.serial_obj, self.buffer, self)
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow()
-    window.showMaximized()
-    sys.exit(app.exec_())
-
-if __name__ == '__main__':
-    main()
+    window = SerialPortGUI()
+    window.show()
+    sys.exit(app.exec())
