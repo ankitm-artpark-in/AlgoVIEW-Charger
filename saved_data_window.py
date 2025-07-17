@@ -1,13 +1,13 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 
-class TabThreeScreen(QWidget):
+class SavedDataWindow(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
         layout = QVBoxLayout()
         serial_obj = self.get_serial_obj()
         info = f"serial_obj: {serial_obj}"
-        layout.addWidget(QLabel("Tab 3 Screen"))
+        layout.addWidget(QLabel("Saved Data"))
         layout.addWidget(QLabel(info))
         self.setLayout(layout)
 

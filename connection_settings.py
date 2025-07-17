@@ -13,8 +13,8 @@ class ConnectionSettings(QGroupBox):
         default_font.setPointSize(11)
         self.setFont(default_font)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setMaximumHeight(120)
-        self.setMinimumHeight(120)
+        self.setMaximumHeight(80)
+        self.setMinimumHeight(80)
 
         layout = QHBoxLayout()
         layout.setSpacing(15)

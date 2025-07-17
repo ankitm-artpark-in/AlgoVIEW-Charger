@@ -15,14 +15,14 @@ from read_serial import read_serial
 
 # Tabs below connection settings
 from PySide6.QtWidgets import QTabWidget
-from tab_one_screen import TabOneScreen
-from tab_two_screen import TabTwoScreen
-from tab_three_screen import TabThreeScreen
+from live_data_window import TabOneScreen as LiveDataWindow
+from sd_card_data_window import TabTwoScreen as SDCardDataWindow
+from saved_data_window import TabThreeScreen as SavedDataWindow
 
 class SerialPortGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Serial Port Manager")
+        self.setWindowTitle("AlgoX-VIEW")
         self.serial_obj = None
         self.buffer = bytearray()
         self.layout = QVBoxLayout()
@@ -37,12 +37,12 @@ class SerialPortGUI(QWidget):
         self.layout.addWidget(self.connection_settings)
 
         self.tabs = QTabWidget()
-        self.tab_one = TabOneScreen(self)
-        self.tab_two = TabTwoScreen(self)
-        self.tab_three = TabThreeScreen(self)
-        self.tabs.addTab(self.tab_one, "Tab 1")
-        self.tabs.addTab(self.tab_two, "Tab 2")
-        self.tabs.addTab(self.tab_three, "Tab 3")
+        self.live_data = LiveDataWindow(self)
+        self.sd_card_data = SDCardDataWindow(self)
+        self.saved_data = SavedDataWindow(self)
+        self.tabs.addTab(self.live_data, "Live Data")
+        self.tabs.addTab(self.sd_card_data, "SD Card Data")
+        self.tabs.addTab(self.saved_data, "Saved Data")
         self.layout.addWidget(self.tabs)
 
         self.setLayout(self.layout)
