@@ -15,9 +15,9 @@ from read_serial import read_serial
 
 # Tabs below connection settings
 from PySide6.QtWidgets import QTabWidget
-from live_data_window import TabOneScreen as LiveDataWindow
-from sd_card_data_window import TabTwoScreen as SDCardDataWindow
-from saved_data_window import TabThreeScreen as SavedDataWindow
+from live_data_window import LiveDataWindow
+from sd_card_data_window import SDCardDataWindow
+from saved_data_window import SavedDataWindow
 
 class SerialPortGUI(QWidget):
     def __init__(self):
@@ -68,7 +68,7 @@ class SerialPortGUI(QWidget):
         self.serial_obj = disconnect_serial(self.serial_obj, self.connection_settings, self)
 
     def read_serial_data(self):
-        read_serial(self.serial_obj, self.buffer, self)
+        read_serial(self.serial_obj, self.buffer, self, self.connection_settings)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

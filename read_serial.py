@@ -1,8 +1,9 @@
 import serial
 from PySide6.QtWidgets import QMessageBox
 from message_parser import process_message
+from handle_disconnect import handle_disconnect
 
-def read_serial(serial_obj, buffer, parent_widget):
+def read_serial(serial_obj, buffer, parent_widget, connection_settings):
     if not (serial_obj and hasattr(serial_obj, 'is_open') and serial_obj.is_open):
         return
     try:
@@ -16,4 +17,4 @@ def read_serial(serial_obj, buffer, parent_widget):
                     else:
                         buffer = buffer[1:]
     except (serial.SerialException, OSError) as e:
-        QMessageBox.critical(parent_widget, "Error", f"Device disconnected unexpectedly: {e}")
+        handle_disconnect(serial_obj, connection_settings, parent_widget, str(e))

@@ -18,6 +18,7 @@ def process_message(self, message):
     msg_id = (message[2], message[3])
     msg_type = MESSAGE_IDS.get(msg_id, "Unknown")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
 
     # Process different message types
     message_handlers = {
@@ -26,8 +27,8 @@ def process_message(self, message):
         "CHARGER_Brick_A": handle_charger_brick_a,
         "CHARGER_Brick_B": handle_charger_brick_b,
         "CHARGER_INFO": handle_charger_info,
-        "DEBUG_MESSAGE_1": handle_debug_message_1,
-        "DEBUG_MESSAGE_2": handle_debug_message_2,
+        # "DEBUG_MESSAGE_1": handle_debug_message_1,
+        # "DEBUG_MESSAGE_2": handle_debug_message_2,
     }
 
     handler = message_handlers.get(msg_type)
@@ -40,35 +41,59 @@ def handle_charger_vit(self, message, timestamp):
     current = (message[7] << 8 | message[6])
     temp = (message[9] << 8 | message[8])
     ac_value = (message[11] << 8 | message[10])
-    print(f"Charger VIT - Voltage: {voltage}, Current: {current}, Temp: {temp}, AC Value: {ac_value} | Timestamp: {timestamp}")
+    
+    # Update live data window
+    self.live_data.update_parameter_value("CHARGER_VIT", "Voltage", f"{voltage}V")
+    self.live_data.update_parameter_value("CHARGER_VIT", "Current", f"{current}A")
+    self.live_data.update_parameter_value("CHARGER_VIT", "Temperature", f"{temp}°C")
+    self.live_data.update_parameter_value("CHARGER_VIT", "AC Value", str(ac_value))
 
 def handle_charger_int_temp_data(self, message, timestamp):
     volta_max = (message[5] << 8 | message[4])
     volta_avg = (message[7] << 8 | message[6])
     ambient_temp = (message[9] << 8 | message[8])
-    print(f"Charger Int Temp Data - Max: {volta_max}, Avg: {volta_avg}, Ambient: {ambient_temp} | Timestamp: {timestamp}")
+    
+    # Update live data window
+    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Voltage Max", f"{volta_max}V")
+    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Voltage Average", f"{volta_avg}V")
+    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Ambient Temperature", f"{ambient_temp}°C")
 
 def handle_charger_brick_a(self, message, timestamp):
     cell_1 = (message[5] << 8 | message[4])
     cell_2 = (message[7] << 8 | message[6])
     cell_3 = (message[9] << 8 | message[8])
     cell_4 = (message[11] << 8 | message[10])
-    print(f"Charger Brick A - Cell 1: {cell_1}, Cell 2: {cell_2}, Cell 3: {cell_3}, Cell 4: {cell_4} | Timestamp: {timestamp}")
+    
+    # Update live data window
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 1", f"{cell_1}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 2", f"{cell_2}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 3", f"{cell_3}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 4", f"{cell_4}V")
 
 def handle_charger_brick_b(self, message, timestamp):
     cell_5 = (message[5] << 8 | message[4])
     cell_6 = (message[7] << 8 | message[6])
     cell_7 = (message[9] << 8 | message[8])
     cell_8 = (message[11] << 8 | message[10])
-    print(f"Charger Brick B - Cell 5: {cell_5}, Cell 6: {cell_6}, Cell 7: {cell_7}, Cell 8: {cell_8} | Timestamp: {timestamp}")
+    
+    # Update live data window
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 5", f"{cell_5}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 6", f"{cell_6}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 7", f"{cell_7}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 8", f"{cell_8}V")
 
 def handle_charger_info(self, message, timestamp):
     hw_version = message[4]
     product_id = message[5]
-    serial_no = message[6:10]
+    serial_no = '.'.join([f'{b:02X}' for b in message[6:10]])
     fw_major = message[10]
     fw_minor = message[11]
-    print(f"Charger Info - HW Version: {hw_version}, Product ID: {product_id}, Serial No: {serial_no}, FW Version: {fw_major}.{fw_minor} | Timestamp: {timestamp}")
+    
+    # Update live data window
+    self.live_data.update_parameter_value("CHARGER_INFO", "Hardware Version", str(hw_version))
+    self.live_data.update_parameter_value("CHARGER_INFO", "Product ID", str(product_id))
+    self.live_data.update_parameter_value("CHARGER_INFO", "Serial Number", serial_no)
+    self.live_data.update_parameter_value("CHARGER_INFO", "Firmware Version", f"{fw_major}.{fw_minor}")
 
 def handle_debug_message_1(self, message, timestamp):
     cell_count = message[4]
@@ -76,7 +101,13 @@ def handle_debug_message_1(self, message, timestamp):
     current_count = (message[7] << 8 | message[6])
     voltage_count = (message[9] << 8 | message[8])
     cell_balance_status = (message[11] << 8 | message[10])
-    print(f"Debug Message 1 - Cell Count: {cell_count}, Charger On Status: {charger_on_status}, Current Count: {current_count}, Voltage Count: {voltage_count}, Cell Balance Status: {cell_balance_status} | Timestamp: {timestamp}")
+    
+    # Update live data window
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_1", "Cell Count", str(cell_count))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_1", "Charger On Status", str(charger_on_status))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_1", "Current Count", str(current_count))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_1", "Voltage Count", str(voltage_count))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_1", "Cell Balance Status", str(cell_balance_status))
     
 def handle_debug_message_2(self, message, timestamp):
     charger_safety_off = message[4]
@@ -85,4 +116,11 @@ def handle_debug_message_2(self, message, timestamp):
     charger_op_on = message[8]
     volta_heart_beat = message[9]
     charger_error_flag = message[10]
-    print(f"Debug Message 2 - Charger Safety Off: {charger_safety_off}, Bat Vtg Read Value: {bat_vtg_read_value}, Charger State: {charger_state}, Charger Op On: {charger_op_on}, Volta Heart Beat: {volta_heart_beat}, Charger Error Flag: {charger_error_flag} | Timestamp: {timestamp}")
+    
+    # Update live data window
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Charger Safety Off", str(charger_safety_off))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Battery Voltage Read Value", f"{bat_vtg_read_value}V")
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Charger State", str(charger_state))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Charger Op On", str(charger_op_on))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Volta Heart Beat", str(volta_heart_beat))
+    self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Charger Error Flag", str(charger_error_flag))
