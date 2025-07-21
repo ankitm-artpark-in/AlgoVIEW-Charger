@@ -1,8 +1,9 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QTreeWidget, QTreeWidgetItem, QSizePolicy,
-                             QMenu)
+                             QMenu, QComboBox, QCheckBox)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QStandardItemModel, QStandardItem, QBrush, QColor
+from color_display_box import ColorBoxDelegate
 from password_dialog import PasswordDialog
 
 class LiveDataWindow(QWidget):
@@ -10,8 +11,14 @@ class LiveDataWindow(QWidget):
         super().__init__()
         self.main_window = main_window
         self.parameter_labels = {}  # Store labels for each parameter
+        self.section_color_combos = {}  # Store color combo boxes for each section
+        self.section_checkboxes = {}  # Store checkboxes for each section
         self.debug_unlocked = False  # Track if debug messages are unlocked
         
+        default_font = QFont()
+        default_font.setPointSize(11)
+        self.setFont(default_font)
+
         # Create main horizontal layout
         main_layout = QHBoxLayout()
         self.setLayout(main_layout)
@@ -19,14 +26,17 @@ class LiveDataWindow(QWidget):
         # Create left panel (40% width)
         left_panel = QWidget()
         left_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        left_panel.setFixedWidth(int(self.width() * 0.5))  # 40% of window width
+        left_panel.setFixedWidth(int(self.width() * 0.75))  # 75% of window width
         left_layout = QVBoxLayout()
         left_panel.setLayout(left_layout)
         
         # Create tree widget with parameter dropdowns
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Parameter", "Value"])  # Two columns
+        self.tree.setHeaderLabels(["Parameter", "Value", "Color", "Enable"])  # four columns
         self.tree.setColumnWidth(0, 200)  # Set width for parameter column
+        self.tree.setColumnWidth(1, 50)  # Set width for value column
+        self.tree.setColumnWidth(2, 75)  # Set width for color column
+        self.tree.setColumnWidth(3, 30)   # Set width for enable column
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_context_menu)
         self.debug_unlocked = False
@@ -37,7 +47,7 @@ class LiveDataWindow(QWidget):
         # Add left panel to main layout
         main_layout.addWidget(left_panel)
         
-        # Right panel (70% width)
+        # Right panel (60% width)
         right_panel = QWidget()
         right_layout = QVBoxLayout()
         right_panel.setLayout(right_layout)
@@ -46,11 +56,10 @@ class LiveDataWindow(QWidget):
         main_layout.addWidget(right_panel)
         
         # Set stretch factors for panels (40:60 ratio)
-        main_layout.setStretchFactor(left_panel, 40)
-        main_layout.setStretchFactor(right_panel, 60)
+        main_layout.setStretchFactor(left_panel, 0)
+        main_layout.setStretchFactor(right_panel, 1)
         
     def populate_tree(self):
-        # Regular message groups
         self.message_structure = {
             "CHARGER_VIT": ["Voltage", "Current", "Temperature", "AC Value"],
             "CHARGER_INT_TEMP_DATA": ["Voltage Max", "Voltage Average", "Ambient Temperature"],
@@ -58,49 +67,57 @@ class LiveDataWindow(QWidget):
             "CHARGER_Brick_B": ["Cell 5", "Cell 6", "Cell 7", "Cell 8"],
             "CHARGER_INFO": ["Hardware Version", "Product ID", "Serial Number", "Firmware Version"]
         }
-        
-        # Debug message groups (stored separately)
         self.debug_message_structure = {
-            "DEBUG_MESSAGE_1": ["Cell Count", "Charger On Status", "Current Count", 
-                              "Voltage Count", "Cell Balance Status"],
-            "DEBUG_MESSAGE_2": ["Charger Safety Off", "Battery Voltage Read Value", 
-                              "Charger State", "Charger Op On", "Volta Heart Beat", 
-                              "Charger Error Flag"]
+            "DEBUG_MESSAGE_1": ["Cell Count", "Charger On Status", "Current Count",
+                            "Voltage Count", "Cell Balance Status"],
+            "DEBUG_MESSAGE_2": ["Charger Safety Off", "Battery Voltage Read Value",
+                            "Charger State", "Charger Op On", "Volta Heart Beat",
+                            "Charger Error Flag"]
         }
-        
-        # Add regular items to tree
+        color_names = ["Red", "Green", "Blue", "Yellow", "Cyan", "Magenta", "Black"]
+        color_values = ["#FF0000", "#008000", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF", "#000000"]
+
         for message_type, parameters in self.message_structure.items():
-            message_item = QTreeWidgetItem([message_type, ""])
+            message_item = QTreeWidgetItem([message_type, "", "", ""])
             message_item.setForeground(0, Qt.black)
             self.tree.addTopLevelItem(message_item)
-            
-            # Add parameters as children with value labels
+
+            # Color dropdown with colored box using ColorBoxDelegate
+            color_combo = QComboBox()
+            color_combo.setFont(self.font())
+            model = QStandardItemModel()
+            for name, hex_color in zip(color_names, color_values):
+                item = QStandardItem(name)
+                item.setData(hex_color, Qt.UserRole)
+                item.setForeground(QBrush(QColor(hex_color)))
+                model.appendRow(item)
+            color_combo.setModel(model)
+            color_combo.setItemDelegate(ColorBoxDelegate(color_combo))
+            color_combo.setCurrentIndex(0)
+            self.tree.setItemWidget(message_item, 2, color_combo)
+            self.section_color_combos[message_type] = color_combo
+
+            checkbox = QCheckBox()
+            checkbox.setFont(self.font())
+            self.tree.setItemWidget(message_item, 3, checkbox)
+            self.section_checkboxes[message_type] = checkbox
+
             for param in parameters:
-                # Create item with parameter name
                 param_item = QTreeWidgetItem([param])
                 message_item.addChild(param_item)
-                
-                # Create label for the parameter value
                 value_label = QLabel("--")
-                value_label.setMinimumWidth(100)
-                value_label.setStyleSheet("color: #2196F3;")  # Blue color for values
+                value_label.setMinimumWidth(80)
+                value_label.setStyleSheet("color: #2196F3;")
                 font = QFont()
                 font.setBold(True)
+                font.setPointSize(11)
                 value_label.setFont(font)
-                
-                # Store the label in our dictionary
                 key = f"{message_type}_{param}"
                 self.parameter_labels[key] = value_label
                 self.tree.setItemWidget(param_item, 1, value_label)
-        
-        # Add debug items only if debug_visible is True
+
         if self.debug_visible:
             self.add_debug_items_to_tree()
-                
-                # Set the label in the second column
-            self.tree.setItemWidget(param_item, 1, value_label)
-                
-        # Expand all items by default
         self.tree.expandAll()
         
     def update_parameter_value(self, message_type, parameter, value):
@@ -164,9 +181,32 @@ class LiveDataWindow(QWidget):
     def add_debug_items_to_tree(self):
         """Add debug message items to the tree widget"""
         for message_type, parameters in self.debug_message_structure.items():
-            message_item = QTreeWidgetItem([message_type, ""])
+            message_item = QTreeWidgetItem([message_type, "", "", ""])
             message_item.setForeground(0, Qt.black)
             self.tree.addTopLevelItem(message_item)
+            
+            # Add color dropdown for section
+            color_combo = QComboBox()
+            color_combo.setFont(self.font())
+            
+            color_names = ["Red", "Green", "Blue", "Yellow", "Cyan", "Magenta", "Black"]
+            color_values = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF", "#000000"]
+            
+            model = QStandardItemModel()
+            for name, hex_color in zip(color_names, color_values):
+                item = QStandardItem(name)
+                item.setForeground(QBrush(QColor(hex_color)))
+                model.appendRow(item)
+            color_combo.setModel(model)
+            color_combo.setCurrentIndex(0)
+            self.tree.setItemWidget(message_item, 2, color_combo)
+            self.section_color_combos[message_type] = color_combo
+
+            # Add checkbox for section
+            checkbox = QCheckBox()
+            checkbox.setFont(self.font())
+            self.tree.setItemWidget(message_item, 3, checkbox)
+            self.section_checkboxes[message_type] = checkbox
             
             # Add parameters as children with value labels
             for param in parameters:
@@ -178,6 +218,7 @@ class LiveDataWindow(QWidget):
                 value_label.setStyleSheet("color: #2196F3;")
                 font = QFont()
                 font.setBold(True)
+                font.setPointSize(11)
                 value_label.setFont(font)
                 
                 key = f"{message_type}_{param}"
@@ -210,6 +251,7 @@ class LiveDataWindow(QWidget):
             if action == hide_action:
                 self.debug_visible = False
                 self.remove_debug_items_from_tree()
+                self.debug_unlocked = False
         else:
             show_action = menu.addAction("Show Debug Messages")
             action = menu.exec_(self.tree.viewport().mapToGlobal(position))

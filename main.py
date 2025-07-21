@@ -26,6 +26,11 @@ class SerialPortGUI(QWidget):
         self.serial_obj = None
         self.buffer = bytearray()
         self.layout = QVBoxLayout()
+        
+        # Set up default font to match ConnectionSettings
+        default_font = QFont()
+        default_font.setPointSize(11)
+        self.setFont(default_font)
 
         # Set up timer for serial reading
         self.timer = QTimer()
@@ -37,9 +42,13 @@ class SerialPortGUI(QWidget):
         self.layout.addWidget(self.connection_settings)
 
         self.tabs = QTabWidget()
+        self.tabs.setFont(default_font)
         self.live_data = LiveDataWindow(self)
+        self.live_data.setFont(default_font)
         self.sd_card_data = SDCardDataWindow(self)
+        self.sd_card_data.setFont(default_font)
         self.saved_data = SavedDataWindow(self)
+        self.saved_data.setFont(default_font)
         self.tabs.addTab(self.live_data, "Live Data")
         self.tabs.addTab(self.sd_card_data, "SD Card Data")
         self.tabs.addTab(self.saved_data, "Saved Data")
@@ -72,6 +81,9 @@ class SerialPortGUI(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    default_font = QFont()
+    default_font.setPointSize(11)
     window = SerialPortGUI()
+    window.setFont(default_font)
     window.show()
     sys.exit(app.exec())
