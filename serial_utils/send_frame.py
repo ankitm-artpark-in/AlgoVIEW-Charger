@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QMessageBox
-from send_raw_msg import send_raw_msg
+from .send_raw_msg import send_raw_msg
 
 def send_frame(serial_obj, command, parent_widget):
     if serial_obj and hasattr(serial_obj, 'is_open') and serial_obj.is_open:

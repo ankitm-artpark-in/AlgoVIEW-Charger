@@ -6,18 +6,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QFont
 from PySide6.QtCore import Signal, QTimer
 
-from refresh_ports import refresh_ports
-from connect_serial import connect_serial
-from disconnect_serial import disconnect_serial
-from handle_disconnect import handle_disconnect
-from connection_settings import ConnectionSettings
-from read_serial import read_serial
+from serial_utils import refresh_ports, connect_serial, disconnect_serial, handle_disconnect, read_serial
+from settings import ConnectionSettings
 
 # Tabs below connection settings
 from PySide6.QtWidgets import QTabWidget
-from live_data_window import LiveDataWindow
-from sd_card_data_window import SDCardDataWindow
-from saved_data_window import SavedDataWindow
+from widgets import LiveDataWindow, SDCardDataWindow, SavedDataWindow
 
 class SerialPortGUI(QWidget):
     def __init__(self):

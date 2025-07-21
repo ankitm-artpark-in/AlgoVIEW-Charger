@@ -3,8 +3,8 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                              QMenu, QComboBox, QCheckBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QStandardItemModel, QStandardItem, QBrush, QColor
-from color_display_box import ColorBoxComboBox, ColorBoxDelegate
-from password_dialog import PasswordDialog
+from .color_display_box import ColorBoxComboBox, ColorBoxDelegate
+from dialogs import PasswordDialog
 
 
 class LiveDataWindow(QWidget):
