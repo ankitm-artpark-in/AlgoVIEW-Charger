@@ -10,5 +10,5 @@ def refresh_ports(dropdown, parent_widget):
     if ports:
         dropdown.addItems(ports)
     else:
-        # Dropdown remains empty, show warning
-        QMessageBox.warning(parent_widget, "No Ports", "No serial ports found.")
+        # Dropdown remains empty, no popup shown
+        pass

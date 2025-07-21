@@ -18,7 +18,7 @@ def process_message(self, message):
     msg_id = (message[2], message[3])
     msg_type = MESSAGE_IDS.get(msg_id, "Unknown")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-    print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
+    # print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
 
     # Process different message types
     message_handlers = {
