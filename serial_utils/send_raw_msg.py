@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QMessageBox
-import serial_utils
+import serial
 from .handle_disconnect import handle_disconnect
 
 def send_raw_msg(serial_obj, msg, parent_widget):
@@ -11,7 +11,7 @@ def send_raw_msg(serial_obj, msg, parent_widget):
         serial_obj.write(msg)
         hex_data = ' '.join([f'{b:02X}' for b in msg])
         
-    except (serial_utils.SerialException, OSError) as e:
+    except (serial.SerialException, OSError) as e:
         handle_disconnect("Device disconnected while sending message")
     except Exception as e:
         QMessageBox.critical(parent_widget, "Error", f"Failed to send message: {str(e)}")

@@ -29,7 +29,7 @@ class PasswordDialog(QDialog):
         self.setLayout(layout)
         
         # Set the correct password (you should change this to something more secure)
-        self.correct_password = "debug123"
+        self.correct_password = "algofet"
         
     def check_password(self):
         if self.password_field.text() == self.correct_password:

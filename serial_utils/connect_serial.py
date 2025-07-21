@@ -1,17 +1,17 @@
-import serial_utils
+import serial
 from PySide6.QtWidgets import QMessageBox
 
 def connect_serial(dropdown, connection_settings, parent_widget):
     port = dropdown.currentText()
     if port:
         try:
-            ser = serial_utils.Serial(port, baudrate=115200, timeout=1)
+            ser = serial.Serial(port, baudrate=115200, timeout=1)
             QMessageBox.information(parent_widget, "Connected", f"Connected to {port}")
             # Enable disconnect, disable connect
             connection_settings.disconnect_button.setEnabled(True)
             connection_settings.connect_button.setEnabled(False)
             return ser
-        except serial_utils.SerialException as e:
+        except serial.SerialException as e:
             QMessageBox.critical(parent_widget, "Error", f"Failed to connect to {port}: {e}")
             return None
     else:
