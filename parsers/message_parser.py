@@ -43,9 +43,9 @@ def handle_charger_vit(self, message, timestamp):
     ac_value = (message[11] << 8 | message[10])
     
     # Update live data window
-    self.live_data.update_parameter_value("CHARGER_VIT", "Voltage", f"{voltage}V")
-    self.live_data.update_parameter_value("CHARGER_VIT", "Current", f"{current}A")
-    self.live_data.update_parameter_value("CHARGER_VIT", "Temperature", f"{temp}°C")
+    self.live_data.update_parameter_value("CHARGER_VIT", "Voltage", f"{voltage}")
+    self.live_data.update_parameter_value("CHARGER_VIT", "Current", f"{current}")
+    self.live_data.update_parameter_value("CHARGER_VIT", "Temperature", f"{temp}")
     self.live_data.update_parameter_value("CHARGER_VIT", "AC Value", str(ac_value))
 
 def handle_charger_int_temp_data(self, message, timestamp):
@@ -54,9 +54,9 @@ def handle_charger_int_temp_data(self, message, timestamp):
     ambient_temp = (message[9] << 8 | message[8])
     
     # Update live data window
-    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Voltage Max", f"{volta_max}V")
-    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Voltage Average", f"{volta_avg}V")
-    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Ambient Temperature", f"{ambient_temp}°C")
+    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Voltage Max", f"{volta_max}")
+    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Voltage Average", f"{volta_avg}")
+    self.live_data.update_parameter_value("CHARGER_INT_TEMP_DATA", "Ambient Temperature", f"{ambient_temp}")
 
 def handle_charger_brick_a(self, message, timestamp):
     cell_1 = (message[5] << 8 | message[4])
@@ -65,10 +65,10 @@ def handle_charger_brick_a(self, message, timestamp):
     cell_4 = (message[11] << 8 | message[10])
     
     # Update live data window
-    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 1", f"{cell_1}V")
-    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 2", f"{cell_2}V")
-    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 3", f"{cell_3}V")
-    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 4", f"{cell_4}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 1", f"{cell_1}")
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 2", f"{cell_2}")
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 3", f"{cell_3}")
+    self.live_data.update_parameter_value("CHARGER_Brick_A", "Cell 4", f"{cell_4}")
 
 def handle_charger_brick_b(self, message, timestamp):
     cell_5 = (message[5] << 8 | message[4])
@@ -77,10 +77,10 @@ def handle_charger_brick_b(self, message, timestamp):
     cell_8 = (message[11] << 8 | message[10])
     
     # Update live data window
-    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 5", f"{cell_5}V")
-    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 6", f"{cell_6}V")
-    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 7", f"{cell_7}V")
-    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 8", f"{cell_8}V")
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 5", f"{cell_5}")
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 6", f"{cell_6}")
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 7", f"{cell_7}")
+    self.live_data.update_parameter_value("CHARGER_Brick_B", "Cell 8", f"{cell_8}")
 
 def handle_charger_info(self, message, timestamp):
     hw_version = message[4]
