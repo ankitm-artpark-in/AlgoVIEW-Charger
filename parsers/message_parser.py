@@ -11,6 +11,12 @@ MESSAGE_IDS = {
     (0x07, 0xE0): "CHARGER_INFO",
     (0xB1, 0xDE): "DEBUG_MESSAGE_1",
     (0xB2, 0xDE): "DEBUG_MESSAGE_2",
+    # (0x10, 0x5D): "RECENT_DATA",
+    (0x03, 0xE0): "RECENT_DATA",
+    # (0x06, 0x5D): "CYCLE_COUNT_DATA",
+    (0x04, 0xE0): "CYCLE_COUNT_DATA",
+    (0x01, 0x5D): "DATA_FRAME_1",
+    (0x02, 0x5D): "DATA_FRAME_2",
 }
 
 def process_message(self, message):
@@ -29,6 +35,10 @@ def process_message(self, message):
         "CHARGER_INFO": handle_charger_info,
         "DEBUG_MESSAGE_1": handle_debug_message_1,
         "DEBUG_MESSAGE_2": handle_debug_message_2,
+        "RECENT_DATA": handle_recent_data,
+        "CYCLE_COUNT_DATA": handle_cycle_count_data,
+        "DATA_FRAME_1": handle_data_frame_1,
+        "DATA_FRAME_2": handle_data_frame_2,
     }
 
     handler = message_handlers.get(msg_type)
@@ -124,3 +134,22 @@ def handle_debug_message_2(self, message, timestamp):
     self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Charger Op On", str(charger_op_on))
     self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Volta Heart Beat", str(volta_heart_beat))
     self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Charger Error Flag", str(charger_error_flag))
+    
+def handle_recent_data(self, message, timestamp):
+    battery_id = (message[5] << 8 | message[4])
+    
+def handle_cycle_count_data(self, message, timestamp):
+    battery_id = (message[5] << 8 | message[4])
+    cycle_count = (message[7] << 8 | message[6])
+    
+def handle_data_frame_1(self, message, timestamp):
+    charge_voltage = (message[5] << 8 | message[4])
+    charge_current = (message[7] << 8 | message[6])
+    rel_time = (message[9] << 8 | message[8])
+    error_flags = (message[11] << 8 | message[10])
+    
+def handle_data_frame_2(self, message, timestamp):
+    set_c_rate1 = (message[5] << 8 | message[4])
+    set_c_rate2 = (message[7] << 8 | message[6])
+    max_volta_temp = (message[9] << 8 | message[8])
+    avg_volta_temp = (message[11] << 8 | message[10])
