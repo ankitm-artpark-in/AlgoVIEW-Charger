@@ -1,8 +1,10 @@
 from PySide6.QtWidgets import QMessageBox
+from .send_frame import send_frame
 
 def disconnect_serial(serial_obj, connection_settings, parent_widget):
     if serial_obj and hasattr(serial_obj, 'is_open') and serial_obj.is_open:
         try:
+            send_frame(serial_obj, "Reception_OFF", parent_widget)
             serial_obj.close()
             QMessageBox.information(parent_widget, "Disconnected", "Disconnected successfully.")
             # Enable connect, disable disconnect

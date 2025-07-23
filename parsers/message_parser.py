@@ -27,8 +27,8 @@ def process_message(self, message):
         "CHARGER_Brick_A": handle_charger_brick_a,
         "CHARGER_Brick_B": handle_charger_brick_b,
         "CHARGER_INFO": handle_charger_info,
-        # "DEBUG_MESSAGE_1": handle_debug_message_1,
-        # "DEBUG_MESSAGE_2": handle_debug_message_2,
+        "DEBUG_MESSAGE_1": handle_debug_message_1,
+        "DEBUG_MESSAGE_2": handle_debug_message_2,
     }
 
     handler = message_handlers.get(msg_type)

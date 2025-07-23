@@ -1,5 +1,6 @@
 import serial
 from PySide6.QtWidgets import QMessageBox
+from .send_frame import send_frame
 
 def connect_serial(dropdown, connection_settings, parent_widget):
     port = dropdown.currentText()
@@ -10,6 +11,7 @@ def connect_serial(dropdown, connection_settings, parent_widget):
             # Enable disconnect, disable connect
             connection_settings.disconnect_button.setEnabled(True)
             connection_settings.connect_button.setEnabled(False)
+            send_frame(ser, "Reception_ON", parent_widget)
             return ser
         except serial.SerialException as e:
             QMessageBox.critical(parent_widget, "Error", f"Failed to connect to {port}: {e}")
