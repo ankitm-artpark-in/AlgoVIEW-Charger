@@ -137,10 +137,19 @@ def handle_debug_message_2(self, message, timestamp):
     
 def handle_recent_data(self, message, timestamp):
     battery_id = (message[5] << 8 | message[4])
+    if not hasattr(self, 'battery_ids'):
+        self.battery_ids = []
+    if battery_id not in self.battery_ids:
+        self.battery_ids.append(battery_id)
+        self.sd_card_data.update_files_tree()
     
 def handle_cycle_count_data(self, message, timestamp):
     battery_id = (message[5] << 8 | message[4])
-    cycle_count = (message[7] << 8 | message[6])
+    cycle_count = (message[7] << 8 | message[6]) + 2
+    if not hasattr(self, 'cycle_counts'):
+        self.cycle_counts = {}
+    self.cycle_counts[battery_id] = cycle_count
+    self.sd_card_data.update_files_tree()
     
 def handle_data_frame_1(self, message, timestamp):
     charge_voltage = (message[5] << 8 | message[4])

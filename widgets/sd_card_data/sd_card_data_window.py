@@ -64,11 +64,9 @@ class SDCardDataWindow(QWidget):
         
         # Create tree widget for SD card files with similar structure to parameter monitor
         self.files_tree = QTreeWidget()
-        self.files_tree.setHeaderLabels(["File/Folder", "Size", "Date", "Type"])
-        self.files_tree.setColumnWidth(0, 180)
-        self.files_tree.setColumnWidth(1, 60)
-        self.files_tree.setColumnWidth(2, 80)
-        self.files_tree.setColumnWidth(3, 60)
+        self.files_tree.setHeaderLabels(["File/Folder", "Cycle Count"])
+        self.files_tree.setColumnWidth(0, 250)
+        self.files_tree.setColumnWidth(1, 100)
         self.files_tree.setMaximumHeight(200)
         self.files_tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.files_tree.customContextMenuRequested.connect(self.show_files_context_menu)
@@ -236,53 +234,57 @@ class SDCardDataWindow(QWidget):
         """Populate the files tree with sample SD card file structure"""
         self.files_tree.clear()
         
-        # Define file structure similar to parameter structure
-        file_structure = {
-            "Data Logs": {
-                "files": [
-                    ("charger_data_001.csv", "2.3 MB", "2024-01-15", "CSV"),
-                    ("charger_data_002.csv", "2.1 MB", "2024-01-14", "CSV"),
-                    ("charger_data_003.csv", "2.5 MB", "2024-01-13", "CSV"),
-                    ("charger_data_004.csv", "1.9 MB", "2024-01-12", "CSV")
-                ]
-            },
-            "Debug Logs": {
-                "files": [
-                    ("debug_log_001.txt", "156 KB", "2024-01-15", "TXT"),
-                    ("debug_log_002.txt", "142 KB", "2024-01-14", "TXT"),
-                    ("debug_log_003.txt", "189 KB", "2024-01-13", "TXT")
-                ]
-            },
-            "Configuration": {
-                "files": [
-                    ("config.json", "4 KB", "2024-01-10", "JSON"),
-                    ("calibration.dat", "12 KB", "2024-01-08", "DAT"),
-                    ("settings.ini", "2 KB", "2024-01-05", "INI")
-                ]
-            },
-            "Firmware": {
-                "files": [
-                    ("firmware_v1.2.3.bin", "512 KB", "2024-01-01", "BIN"),
-                    ("bootloader.hex", "64 KB", "2024-01-01", "HEX")
-                ]
-            }
-        }
+        battery_ids = getattr(self.main_window, 'battery_ids', [])
+        cycle_counts = getattr(self.main_window, 'cycle_counts', {})
         
-        for folder_name, folder_data in file_structure.items():
-            # Create folder item
-            folder_item = QTreeWidgetItem([folder_name, "", "", "Folder"])
-            folder_item.setForeground(0, Qt.black)
-            font = QFont()
-            font.setBold(True)
-            folder_item.setFont(0, font)
-            self.files_tree.addTopLevelItem(folder_item)
+        # Create battery root item
+        battery_root = QTreeWidgetItem(["Battery Data", ""])
+        battery_root.setForeground(0, Qt.black)
+        font = QFont()
+        font.setBold(True)
+        battery_root.setFont(0, font)
+        self.files_tree.addTopLevelItem(battery_root)
+        
+        for battery_id in battery_ids:
+            folder_name = f"Battery {battery_id}"
+            battery_folder = QTreeWidgetItem([folder_name, ""])
+            battery_root.addChild(battery_folder)
             
-            # Add files to folder
-            for file_name, size, date, file_type in folder_data["files"]:
-                file_item = QTreeWidgetItem([file_name, size, date, file_type])
-                folder_item.addChild(file_item)
+            # Set cycle count with proper formatting and type conversion
+            if battery_id in cycle_counts:
+                try:
+                    cycle_count = int(cycle_counts[battery_id])
+                    
+                    # Create cycle selection widget based on actual cycle count
+                    if cycle_count > 0:
+                        cycle_widget = QWidget()
+                        cycle_layout = QHBoxLayout(cycle_widget)
+                        cycle_layout.setContentsMargins(0, 0, 0, 0)
+                        cycle_layout.setSpacing(5)  # Add some spacing between elements
+                        
+                        cycle_combo = QComboBox()
+                        cycle_combo.addItems([str(i) for i in range(1, cycle_count + 1)])
+                        cycle_layout.addWidget(cycle_combo)
+                        
+                        # Add download button
+                        download_btn = QPushButton("⬇")
+                        download_btn.setMaximumWidth(30)  # Keep button compact
+                        download_btn.clicked.connect(lambda checked, bid=battery_id, combo=cycle_combo: 
+                                                self.download_battery_data(bid, combo.currentText()))
+                        cycle_layout.addWidget(download_btn)
+                        
+                        # Set the dropdown in the cycle count column (column 1)
+                        battery_folder.setText(1, "")  # Clear text to make room for widget
+                        self.files_tree.setItemWidget(battery_folder, 1, cycle_widget)
+                    else:
+                        # If cycle count is 0, just show "0"
+                        battery_folder.setText(1, "0")
+                        battery_folder.setTextAlignment(1, Qt.AlignCenter)
+                        
+                except (ValueError, TypeError) as e:
+                    print(f"Error converting cycle count for battery {battery_id}: {e}")
+                    battery_folder.setText(1, "Error")
         
-        # Expand all folders by default
         self.files_tree.expandAll()
 
     def show_files_context_menu(self, position):
@@ -550,7 +552,6 @@ class SDCardDataWindow(QWidget):
             self.figure.savefig(filename, dpi=300, bbox_inches='tight')
 
     def clear_data(self):
-        """Clear all stored data and reset the plot"""
         self.parameter_data.clear()
         for line in self.plot_lines.values():
             line.set_data([], [])
@@ -679,6 +680,25 @@ class SDCardDataWindow(QWidget):
                 else:
                     self.debug_visible = True
                     self.add_debug_items_to_tree()
-
+                    
+    def download_cycle_data(self, battery_id, cycle_number):
+        """Download cycle data for the selected battery and cycle"""
+        serial_obj = self.get_serial_obj()
+        if serial_obj and serial_obj.is_open:
+            try:
+                from serial_utils.send_frame import send_battery_query
+                send_battery_query(serial_obj, self, battery_id, cycle_number)
+            except Exception as e:
+                pass
+                # QMessageBox.critical(self, "Error", f"Failed to download cycle data: {e}")
+        else:
+            pass
+            # QMessageBox.warning(self, "Not Connected", "Please connect to the device first.")
+            
+    def update_files_tree(self):
+        """Update the files tree when new data is received"""
+        if hasattr(self, 'files_tree'):
+            self.populate_files_tree()
+            
     def get_serial_obj(self):
         return self.main_window.serial_obj
