@@ -36,6 +36,8 @@ def send_frame(serial_obj, command, parent_widget):
 def send_battery_query(serial_obj, parent_widget, battery_id, cycle_count):
     if serial_obj and hasattr(serial_obj, 'is_open') and serial_obj.is_open:
         try:
+            battery_id = int(battery_id)
+            cycle_count = int(cycle_count)
             # msg = bytes([0x30, 0xAA, 0x00, 0xB3, 
             #             (battery_id >> 8) & 0xFF, battery_id & 0xFF,
             #             (cycle_count >> 8) & 0xFF, cycle_count & 0xFF,

@@ -103,11 +103,12 @@ def handle_charger_info(self, message, timestamp):
     self.live_data.update_parameter_value("CHARGER_INFO", "Serial Number", serial_no)
     self.live_data.update_parameter_value("CHARGER_INFO", "Firmware Version", f"{fw_major}.{fw_minor}")
     
-    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Hardware Version", str(hw_version))
-    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Product ID", str(product_id))
-    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Serial Number", serial_no)
-    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Firmware Version", f"{fw_major}.{fw_minor}")
-
+    self.sd_card_data.charger_info_labels["CHARGER_INFO_Hardware Version"].setText(str(hw_version))
+    self.sd_card_data.charger_info_labels["CHARGER_INFO_Product ID"].setText(str(product_id))
+    self.sd_card_data.charger_info_labels["CHARGER_INFO_Serial Number"].setText(serial_no)
+    self.sd_card_data.charger_info_labels["CHARGER_INFO_Firmware Version"].setText(f"{fw_major}.{fw_minor}")
+    
+    
 def handle_debug_message_1(self, message, timestamp):
     cell_count = message[4]
     charger_on_status = message[5]

@@ -11,7 +11,7 @@ from settings import ConnectionSettings
 
 # Tabs below connection settings
 from PySide6.QtWidgets import QTabWidget
-from widgets import LiveDataWindow, SDCardDataWindow, SavedDataWindow
+from widgets import LiveDataWindow, SDCardDataWindow
 
 class SerialPortGUI(QWidget):
     def __init__(self):
@@ -38,11 +38,8 @@ class SerialPortGUI(QWidget):
         self.live_data.setFont(default_font)
         self.sd_card_data = SDCardDataWindow(self)
         self.sd_card_data.setFont(default_font)
-        self.saved_data = SavedDataWindow(self)
-        self.saved_data.setFont(default_font)
         self.tabs.addTab(self.live_data, "Live Data")
         self.tabs.addTab(self.sd_card_data, "SD Card Data")
-        self.tabs.addTab(self.saved_data, "Saved Data")
         self.layout.addWidget(self.tabs)
 
         self.setLayout(self.layout)
