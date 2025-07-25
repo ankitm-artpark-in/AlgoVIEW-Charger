@@ -52,11 +52,22 @@ class SDCardDataWindow(QWidget):
 
         self.create_files_section(left_layout)
         self.create_charger_info_section(left_layout)
-        left_layout.setStretchFactor(self.files_tree, 2)
+        self.create_saved_files_section(left_layout)
+        left_layout.setStretchFactor(self.files_tree, 3)
         left_layout.setStretchFactor(self.charger_tree, 1)
-        # left_layout.setStretchFactor(self.saved_files, 2)
+        left_layout.setStretchFactor(self.saved_files, 2)
         
         return left_panel
+    
+    def create_saved_files_section(self, layout):
+        saved_header = QLabel("Saved Files")
+        saved_header.setStyleSheet("font-weight: bold; font-size: 14px; padding: 5px; margin-top: 10px;")
+        layout.addWidget(saved_header)
+        
+        self.saved_files = QListWidget()
+        self.saved_files.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.saved_files.customContextMenuRequested.connect(self.show_saved_files_context_menu)
+        layout.addWidget(self.saved_files)
 
     def create_files_section(self, layout):
         files_header = QLabel("SD Card Files")
@@ -217,6 +228,19 @@ class SDCardDataWindow(QWidget):
                     battery_folder.setText(1, "Error")
         
         self.files_tree.expandAll()
+        
+    def show_saved_files_context_menu(self, position):
+        """Show context menu for saved files list"""
+        menu = QMenu()
+        item = self.saved_files.itemAt(position)
+        
+        if item:
+            delete_action = menu.addAction("Delete")
+            action = menu.exec_(self.saved_files.viewport().mapToGlobal(position))
+            
+            if action == delete_action:
+                row = self.saved_files.row(item)
+                self.saved_files.takeItem(row)
 
     def show_files_context_menu(self, position):
         """Show context menu for files tree"""
@@ -306,6 +330,8 @@ class SDCardDataWindow(QWidget):
         if serial_obj and serial_obj.is_open:
             try:
                 send_battery_query(serial_obj, self, battery_id, cycle_number)
+                item_text = f"Battery {battery_id} - Cycle {cycle_number}"
+                self.saved_files.addItem(item_text)
             except Exception as e:
                 pass
         else:
