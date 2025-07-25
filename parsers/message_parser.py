@@ -26,7 +26,6 @@ def process_message(self, message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     # print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
 
-    # Process different message types
     message_handlers = {
         "CHARGER_VIT": handle_charger_vit,
         "CHARGER_INT_TEMP_DATA": handle_charger_int_temp_data,
@@ -45,7 +44,6 @@ def process_message(self, message):
     if handler:
         handler(self, message, timestamp)
 
-# Individual message handlers
 def handle_charger_vit(self, message, timestamp):
     voltage = (message[5] << 8 | message[4])
     current = (message[7] << 8 | message[6])
@@ -104,6 +102,11 @@ def handle_charger_info(self, message, timestamp):
     self.live_data.update_parameter_value("CHARGER_INFO", "Product ID", str(product_id))
     self.live_data.update_parameter_value("CHARGER_INFO", "Serial Number", serial_no)
     self.live_data.update_parameter_value("CHARGER_INFO", "Firmware Version", f"{fw_major}.{fw_minor}")
+    
+    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Hardware Version", str(hw_version))
+    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Product ID", str(product_id))
+    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Serial Number", serial_no)
+    self.sd_card_data.update_parameter_value("CHARGER_INFO", "Firmware Version", f"{fw_major}.{fw_minor}")
 
 def handle_debug_message_1(self, message, timestamp):
     cell_count = message[4]

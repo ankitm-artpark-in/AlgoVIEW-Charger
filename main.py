@@ -21,17 +21,14 @@ class SerialPortGUI(QWidget):
         self.buffer = bytearray()
         self.layout = QVBoxLayout()
         
-        # Set up default font to match ConnectionSettings
         default_font = QFont()
         default_font.setPointSize(11)
         self.setFont(default_font)
 
-        # Set up timer for serial reading
         self.timer = QTimer()
         self.timer.timeout.connect(self.read_serial_data)
-        self.timer.setInterval(100)  # 100ms interval
+        self.timer.setInterval(100)
 
-        # Connection settings at the top
         self.connection_settings = ConnectionSettings(self)
         self.layout.addWidget(self.connection_settings)
 

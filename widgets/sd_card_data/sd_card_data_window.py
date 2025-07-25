@@ -67,7 +67,6 @@ class SDCardDataWindow(QWidget):
         self.files_tree.setHeaderLabels(["File/Folder", "Cycle Count"])
         self.files_tree.setColumnWidth(0, 250)
         self.files_tree.setColumnWidth(1, 100)
-        self.files_tree.setMaximumHeight(200)
         self.files_tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.files_tree.customContextMenuRequested.connect(self.show_files_context_menu)
         
@@ -690,10 +689,8 @@ class SDCardDataWindow(QWidget):
                 send_battery_query(serial_obj, self, battery_id, cycle_number)
             except Exception as e:
                 pass
-                # QMessageBox.critical(self, "Error", f"Failed to download cycle data: {e}")
         else:
             pass
-            # QMessageBox.warning(self, "Not Connected", "Please connect to the device first.")
             
     def update_files_tree(self):
         """Update the files tree when new data is received"""
