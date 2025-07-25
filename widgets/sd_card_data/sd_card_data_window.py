@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QTreeWidget, QTreeWidgetItem, QSizePolicy,
                              QMenu, QComboBox, QCheckBox, QPushButton, QFileDialog,
-                             QFrame, QScrollArea, QListWidget, QListWidgetItem)
+                             QFrame, QScrollArea, QListWidget, QListWidgetItem,
+                             QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox)
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Signal
 from PySide6.QtGui import QFont, QStandardItemModel, QStandardItem, QBrush, QColor, QIcon
 import matplotlib.pyplot as plt
@@ -22,6 +23,7 @@ class SDCardDataWindow(QWidget):
         super().__init__()
         self.main_window = main_window
         self.charger_info_labels = {}
+        self.saved_data = {}  # To store saved data
         
         default_font = QFont()
         default_font.setPointSize(11)
@@ -37,14 +39,13 @@ class SDCardDataWindow(QWidget):
         left_panel = self.create_left_panel()
         right_panel = self.create_right_panel()
 
-        # Add panels to main layout
         main_layout.addWidget(left_panel)
         main_layout.addWidget(right_panel, stretch=1)
 
     def create_left_panel(self):
         left_panel = QWidget()
         left_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        left_panel.setFixedWidth(400)  # Fixed width for parameter panel
+        left_panel.setFixedWidth(400)
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(0)
@@ -55,7 +56,7 @@ class SDCardDataWindow(QWidget):
         self.create_saved_files_section(left_layout)
         left_layout.setStretchFactor(self.files_tree, 3)
         left_layout.setStretchFactor(self.charger_tree, 1)
-        left_layout.setStretchFactor(self.saved_files, 2)
+        left_layout.setStretchFactor(self.saved_files_table, 2)
         
         return left_panel
     
@@ -64,10 +65,25 @@ class SDCardDataWindow(QWidget):
         saved_header.setStyleSheet("font-weight: bold; font-size: 14px; padding: 5px; margin-top: 10px;")
         layout.addWidget(saved_header)
         
-        self.saved_files = QListWidget()
-        self.saved_files.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.saved_files.customContextMenuRequested.connect(self.show_saved_files_context_menu)
-        layout.addWidget(self.saved_files)
+        self.saved_files_table = QTableWidget()
+        self.saved_files_table.setColumnCount(3)
+        self.saved_files_table.setHorizontalHeaderLabels(["Battery ID", "Cycle", "Download Time"])
+        
+        header = self.saved_files_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.saved_files_table.setColumnWidth(0, 80)
+        self.saved_files_table.setColumnWidth(1, 60)
+        
+        self.saved_files_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.saved_files_table.setAlternatingRowColors(True)
+        
+        self.saved_files_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.saved_files_table.customContextMenuRequested.connect(self.show_saved_files_context_menu)
+        
+        self.saved_files_table.itemDoubleClicked.connect(self.view_saved_data)
+        layout.addWidget(self.saved_files_table)
 
     def create_files_section(self, layout):
         files_header = QLabel("SD Card Files")
@@ -140,24 +156,21 @@ class SDCardDataWindow(QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.ax = self.figure.add_subplot(111)
         
-        # Configure the plot
         self.ax.set_xlabel('Time')
         self.ax.set_ylabel('Parameter Value')
         self.ax.set_title('SD Card Data Parameter Monitoring')
         self.ax.grid(True, alpha=0.3)
         
-        # Format x-axis for time display
         self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
         
-        # Enable interactive features
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
 
     def populate_charger_info_tree(self):
         self.charger_info_labels.clear()
         self.charger_tree.clear()
 
-        # CHARGER_INFO parameters
+        # CHARGER_INFO
         charger_info_params = ["Hardware Version", "Product ID", "Serial Number", "Firmware Version"]
         
         for param in charger_info_params:
@@ -228,22 +241,97 @@ class SDCardDataWindow(QWidget):
                     battery_folder.setText(1, "Error")
         
         self.files_tree.expandAll()
+
+    def is_data_already_saved(self, battery_id, cycle_number):
+        # Checks if combination already exists
+        key = (str(battery_id), str(cycle_number))
+        return key in self.saved_data
+
+    def add_saved_file_entry(self, battery_id, cycle_number, data=None):
+        # Add entry to saved files
+        if self.is_data_already_saved(battery_id, cycle_number):
+            QMessageBox.information(
+                self, 
+                "Duplicate Data", 
+                f"Data for Battery {battery_id} - Cycle {cycle_number} is already saved."
+            )
+            return False
+        
+        # Add to saved_data dictionary
+        key = (str(battery_id), str(cycle_number))
+        self.saved_data[key] = data or {}
+        
+        row_count = self.saved_files_table.rowCount()
+        self.saved_files_table.insertRow(row_count)
+        
+        self.saved_files_table.setItem(row_count, 0, QTableWidgetItem(str(battery_id)))
+        self.saved_files_table.setItem(row_count, 1, QTableWidgetItem(str(cycle_number)))
+        self.saved_files_table.setItem(row_count, 2, QTableWidgetItem(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        
+        self.saved_files_table.item(row_count, 0).setTextAlignment(Qt.AlignCenter)
+        self.saved_files_table.item(row_count, 1).setTextAlignment(Qt.AlignCenter)
+        
+        return True
+
+    def view_saved_data(self, item):
+        row = item.row()
+        battery_id = self.saved_files_table.item(row, 0).text()
+        cycle_number = self.saved_files_table.item(row, 1).text()
+        
+        key = (battery_id, cycle_number)
+        if key in self.saved_data:
+            QMessageBox.information(
+                self,
+                "Saved Data",
+                f"Viewing data for Battery {battery_id} - Cycle {cycle_number}\n\n"
+                f"Data keys: {list(self.saved_data[key].keys()) if self.saved_data[key] else 'No data'}"
+            )
         
     def show_saved_files_context_menu(self, position):
-        """Show context menu for saved files list"""
         menu = QMenu()
-        item = self.saved_files.itemAt(position)
+        row = self.saved_files_table.rowAt(position.y())
         
-        if item:
+        if row >= 0:
+            view_action = menu.addAction("View Data")
             delete_action = menu.addAction("Delete")
-            action = menu.exec_(self.saved_files.viewport().mapToGlobal(position))
+            menu.addSeparator()
             
-            if action == delete_action:
-                row = self.saved_files.row(item)
-                self.saved_files.takeItem(row)
+        clear_all_action = menu.addAction("Clear All")
+        
+        action = menu.exec_(self.saved_files_table.viewport().mapToGlobal(position))
+        
+        if action:
+            if action.text() == "View Data" and row >= 0:
+                self.view_saved_data(self.saved_files_table.item(row, 0))
+            elif action.text() == "Delete" and row >= 0:
+                self.delete_saved_file_row(row)
+            elif action.text() == "Clear All":
+                self.clear_all_saved_files()
+
+    def delete_saved_file_row(self, row):
+        if row >= 0 and row < self.saved_files_table.rowCount():
+            battery_id = self.saved_files_table.item(row, 0).text()
+            cycle_number = self.saved_files_table.item(row, 1).text()
+            
+            key = (battery_id, cycle_number)
+            if key in self.saved_data:
+                del self.saved_data[key]
+            
+            self.saved_files_table.removeRow(row)
+
+    def clear_all_saved_files(self):
+        reply = QMessageBox.question(
+            self,
+            "Clear All",
+            "Are you sure you want to clear all saved files?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.saved_data.clear()
+            self.saved_files_table.setRowCount(0)
 
     def show_files_context_menu(self, position):
-        """Show context menu for files tree"""
         menu = QMenu()
         item = self.files_tree.itemAt(position)
         
@@ -306,7 +394,6 @@ class SDCardDataWindow(QWidget):
         self.canvas.draw()
 
     def save_plot(self):
-        """Save the current plot to file"""
         filename, _ = QFileDialog.getSaveFileName(
             self, 
             "Save Plot", 
@@ -326,16 +413,24 @@ class SDCardDataWindow(QWidget):
         self.canvas.draw()
             
     def download_cycle_data(self, battery_id, cycle_number):
+        if self.is_data_already_saved(battery_id, cycle_number):
+            QMessageBox.information(
+                self, 
+                "Duplicate Data", 
+                f"Data for Battery {battery_id} - Cycle {cycle_number} is already saved."
+            )
+            return
+        
         serial_obj = self.get_serial_obj()
         if serial_obj and serial_obj.is_open:
             try:
-                send_battery_query(serial_obj, self, battery_id, cycle_number)
-                item_text = f"Battery {battery_id} - Cycle {cycle_number}"
-                self.saved_files.addItem(item_text)
+                data = send_battery_query(serial_obj, self, battery_id, cycle_number)
+                self.add_saved_file_entry(battery_id, cycle_number, data)
+                
             except Exception as e:
-                pass
+                QMessageBox.warning(self, "Download Error", f"Failed to download data: {str(e)}")
         else:
-            pass
+            QMessageBox.warning(self, "Connection Error", "Serial connection is not available.")
             
     def update_files_tree(self):
         if hasattr(self, 'files_tree'):
