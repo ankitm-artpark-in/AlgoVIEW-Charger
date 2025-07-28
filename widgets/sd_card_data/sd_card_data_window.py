@@ -21,251 +21,7 @@ from collections import defaultdict, deque
 from serial_utils.send_frame import send_battery_query
 from ..color_display_box import ColorBoxComboBox, ColorBoxDelegate
 from dialogs import PasswordDialog
-
-
-class DataViewerDialog(QDialog):
-    """Dialog to display saved data in tabular format"""
-    
-    def __init__(self, battery_id, cycle_number, data, parent=None):
-        super().__init__(parent)
-        self.battery_id = battery_id
-        self.cycle_number = cycle_number
-        self.data = data
-        self.init_ui()
-        
-    def init_ui(self):
-        self.setWindowTitle(f"Data Viewer - Battery {self.battery_id} - Cycle {self.cycle_number}")
-        self.setModal(True)
-        self.resize(800, 600)
-        
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        
-        # Header info
-        header_label = QLabel(f"Battery ID: {self.battery_id} | Cycle: {self.cycle_number}")
-        header_label.setStyleSheet("font-weight: bold; font-size: 14px; padding: 10px; background-color: #f0f0f0;")
-        header_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(header_label)
-        
-        # Create tab widget for different data views
-        self.tab_widget = QTabWidget()
-        layout.addWidget(self.tab_widget)
-        
-        # Load and display data
-        self.load_data_tabs()
-        
-        # Button box
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        button_box.rejected.connect(self.close)
-        
-        # Add export button
-        export_btn = QPushButton("Export to CSV")
-        export_btn.clicked.connect(self.export_current_tab)
-        button_box.addButton(export_btn, QDialogButtonBox.ButtonRole.ActionRole)
-        
-        layout.addWidget(button_box)
-        
-    def load_data_tabs(self):
-        """Load data into different tabs based on data structure"""
-        if not self.data:
-            self.add_empty_tab("No Data Available")
-            return
-            
-        # Check if CSV file exists and load it
-        csv_file = self.data.get('csv_file')
-        if csv_file and os.path.exists(csv_file):
-            self.add_csv_data_tab(csv_file)
-        
-        # Add serial query data tab if available
-        serial_data = {k: v for k, v in self.data.items() 
-                      if k not in ['csv_file', 'export_time']}
-        if serial_data:
-            self.add_serial_data_tab(serial_data)
-            
-        # Add metadata tab
-        self.add_metadata_tab()
-        
-    def add_csv_data_tab(self, csv_file):
-        """Add tab with CSV data"""
-        try:
-            df = pd.read_csv(csv_file)
-            table_widget = self.create_table_from_dataframe(df)
-            self.tab_widget.addTab(table_widget, f"CSV Data ({len(df)} rows)")
-        except Exception as e:
-            error_widget = QTextEdit()
-            error_widget.setPlainText(f"Error loading CSV file: {str(e)}")
-            error_widget.setReadOnly(True)
-            self.tab_widget.addTab(error_widget, "CSV Data (Error)")
-            
-    def add_serial_data_tab(self, serial_data):
-        """Add tab with serial query data"""
-        if not serial_data:
-            return
-            
-        # Convert serial data to tabular format
-        table_widget = QTableWidget()
-        
-        # Flatten nested dictionaries and lists
-        flattened_data = self.flatten_data(serial_data)
-        
-        if flattened_data:
-            table_widget.setRowCount(len(flattened_data))
-            table_widget.setColumnCount(2)
-            table_widget.setHorizontalHeaderLabels(["Parameter", "Value"])
-            
-            for row, (key, value) in enumerate(flattened_data.items()):
-                table_widget.setItem(row, 0, QTableWidgetItem(str(key)))
-                table_widget.setItem(row, 1, QTableWidgetItem(str(value)))
-                
-            # Resize columns
-            table_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-            table_widget.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-            
-            # Make read-only
-            table_widget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-            table_widget.setAlternatingRowColors(True)
-            
-        self.tab_widget.addTab(table_widget, f"Serial Data ({len(flattened_data)} params)")
-        
-    def add_metadata_tab(self):
-        """Add tab with file metadata"""
-        metadata_widget = QTableWidget()
-        metadata_items = [
-            ("Battery ID", self.battery_id),
-            ("Cycle Number", self.cycle_number),
-            ("CSV File", self.data.get('csv_file', 'N/A')),
-            ("Export Time", self.data.get('export_time', 'N/A')),
-            ("File Size", self.get_file_size()),
-            ("Data Keys", ', '.join(self.data.keys()) if self.data else 'None')
-        ]
-        
-        metadata_widget.setRowCount(len(metadata_items))
-        metadata_widget.setColumnCount(2)
-        metadata_widget.setHorizontalHeaderLabels(["Property", "Value"])
-        
-        for row, (key, value) in enumerate(metadata_items):
-            metadata_widget.setItem(row, 0, QTableWidgetItem(str(key)))
-            metadata_widget.setItem(row, 1, QTableWidgetItem(str(value)))
-            
-        metadata_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        metadata_widget.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        metadata_widget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        
-        self.tab_widget.addTab(metadata_widget, "Metadata")
-        
-    def add_empty_tab(self, message):
-        """Add tab with empty message"""
-        empty_widget = QTextEdit()
-        empty_widget.setPlainText(message)
-        empty_widget.setReadOnly(True)
-        empty_widget.setAlignment(Qt.AlignCenter)
-        self.tab_widget.addTab(empty_widget, "No Data")
-        
-    def create_table_from_dataframe(self, df):
-        """Create QTableWidget from pandas DataFrame"""
-        table_widget = QTableWidget()
-        table_widget.setRowCount(len(df))
-        table_widget.setColumnCount(len(df.columns))
-        table_widget.setHorizontalHeaderLabels(df.columns.tolist())
-        
-        # Populate table
-        for row in range(len(df)):
-            for col in range(len(df.columns)):
-                value = df.iloc[row, col]
-                if pd.isna(value):
-                    value = ""
-                table_widget.setItem(row, col, QTableWidgetItem(str(value)))
-                
-        # Configure table
-        table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        table_widget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table_widget.setAlternatingRowColors(True)
-        table_widget.setSortingEnabled(True)
-        
-        return table_widget
-        
-    def flatten_data(self, data, parent_key='', sep='_'):
-        """Flatten nested dictionaries and lists"""
-        items = []
-        
-        if isinstance(data, dict):
-            for k, v in data.items():
-                new_key = f"{parent_key}{sep}{k}" if parent_key else k
-                if isinstance(v, (dict, list)):
-                    items.extend(self.flatten_data(v, new_key, sep=sep).items())
-                else:
-                    items.append((new_key, v))
-        elif isinstance(data, list):
-            for i, v in enumerate(data):
-                new_key = f"{parent_key}{sep}{i}" if parent_key else str(i)
-                if isinstance(v, (dict, list)):
-                    items.extend(self.flatten_data(v, new_key, sep=sep).items())
-                else:
-                    items.append((new_key, v))
-        else:
-            items.append((parent_key or 'value', data))
-            
-        return dict(items)
-        
-    def get_file_size(self):
-        """Get file size if CSV file exists"""
-        csv_file = self.data.get('csv_file')
-        if csv_file and os.path.exists(csv_file):
-            size = os.path.getsize(csv_file)
-            if size < 1024:
-                return f"{size} bytes"
-            elif size < 1024 * 1024:
-                return f"{size / 1024:.1f} KB"
-            else:
-                return f"{size / (1024 * 1024):.1f} MB"
-        return "N/A"
-        
-    def export_current_tab(self):
-        """Export current tab data to CSV"""
-        current_index = self.tab_widget.currentIndex()
-        current_widget = self.tab_widget.widget(current_index)
-        tab_name = self.tab_widget.tabText(current_index)
-        
-        if isinstance(current_widget, QTableWidget):
-            self.export_table_to_csv(current_widget, tab_name)
-        else:
-            QMessageBox.information(self, "Export", "Current tab cannot be exported as CSV.")
-            
-    def export_table_to_csv(self, table_widget, tab_name):
-        """Export table widget data to CSV"""
-        filename, _ = QFileDialog.getSaveFileName(
-            self,
-            f"Export {tab_name}",
-            f"Battery_{self.battery_id}_Cycle_{self.cycle_number}_{tab_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            "CSV Files (*.csv)"
-        )
-        
-        if filename:
-            try:
-                data = []
-                headers = []
-                
-                # Get headers
-                for col in range(table_widget.columnCount()):
-                    headers.append(table_widget.horizontalHeaderItem(col).text())
-                    
-                # Get data
-                for row in range(table_widget.rowCount()):
-                    row_data = []
-                    for col in range(table_widget.columnCount()):
-                        item = table_widget.item(row, col)
-                        row_data.append(item.text() if item else "")
-                    data.append(row_data)
-                    
-                # Create DataFrame and save
-                df = pd.DataFrame(data, columns=headers)
-                df.to_csv(filename, index=False)
-                
-                QMessageBox.information(self, "Export Successful", f"Data exported to:\n{filename}")
-                
-            except Exception as e:
-                QMessageBox.critical(self, "Export Error", f"Failed to export data:\n{str(e)}")
-
+from dialogs import DataViewerDialog
 
 class SDCardDataWindow(QWidget):
     def __init__(self, main_window):
@@ -331,7 +87,7 @@ class SDCardDataWindow(QWidget):
         self.saved_files_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.saved_files_table.customContextMenuRequested.connect(self.show_saved_files_context_menu)
         
-        # Connect double-click to the new data viewer
+        # Connect double-click to the data viewer
         self.saved_files_table.itemDoubleClicked.connect(self.view_saved_data)
         layout.addWidget(self.saved_files_table)
 
@@ -491,159 +247,6 @@ class SDCardDataWindow(QWidget):
                     battery_folder.setText(1, "Error")
         
         self.files_tree.expandAll()
-        
-    def save_as_csv_file(self, battery_id, cycle_number):
-        """Save data_frames_1_buffer and data_frames_2_buffer to a CSV file with timestamp-based merging"""
-        data_frames_1_buffer = getattr(self.main_window, 'data_frames_1_buffer', None)
-        data_frames_2_buffer = getattr(self.main_window, 'data_frames_2_buffer', None)
-        
-        # Check if buffers have data
-        if not data_frames_1_buffer and not data_frames_2_buffer:
-            QMessageBox.warning(self, "No Data", "No data available to save.")
-            return None
-            
-        # Generate default filename
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        default_filename = f"Battery_{battery_id}_Cycle_{cycle_number}_{timestamp}.csv"
-        
-        # Let user choose filename and directory
-        filename, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Battery Data as CSV",
-            default_filename,
-            "CSV Files (*.csv);;All Files (*)"
-        )
-        
-        if not filename:
-            return None  # User cancelled
-            
-        try:
-            # Create dictionaries to store data by timestamp
-            buffer1_data = {}
-            buffer2_data = {}
-            all_timestamps = set()
-            
-            # Process buffer 1 data
-            if data_frames_1_buffer and isinstance(data_frames_1_buffer, list):
-                for i, frame in enumerate(data_frames_1_buffer):
-                    timestamp_key = None
-                    frame_data = {}
-                    
-                    if isinstance(frame, dict):
-                        # Look for timestamp fields (common names)
-                        timestamp_fields = ['timestamp', 'time', 'Timestamp', 'Time', 'ts', 'datetime']
-                        for ts_field in timestamp_fields:
-                            if ts_field in frame:
-                                timestamp_key = frame[ts_field]
-                                break
-                        
-                        # Add all fields without prefix
-                        for key, value in frame.items():
-                            if key not in timestamp_fields:  # Don't duplicate timestamp
-                                frame_data[key] = value
-                            else:
-                                frame_data['Timestamp'] = value
-                                
-                    elif isinstance(frame, (list, tuple)):
-                        # Assume first element is timestamp for lists
-                        if len(frame) > 0:
-                            timestamp_key = frame[0]
-                            frame_data['Timestamp'] = frame[0]
-                            for j, value in enumerate(frame[1:], 1):
-                                frame_data[f'Value_{j}'] = value
-                    else:
-                        # Use index as timestamp for other types
-                        timestamp_key = i
-                        frame_data['Timestamp'] = i
-                        frame_data['Data'] = str(frame)
-                    
-                    if timestamp_key is not None:
-                        buffer1_data[timestamp_key] = frame_data
-                        all_timestamps.add(timestamp_key)
-            
-            # Process buffer 2 data
-            if data_frames_2_buffer and isinstance(data_frames_2_buffer, list):
-                for i, frame in enumerate(data_frames_2_buffer):
-                    timestamp_key = None
-                    frame_data = {}
-                    
-                    if isinstance(frame, dict):
-                        # Look for timestamp fields
-                        timestamp_fields = ['timestamp', 'time', 'Timestamp', 'Time', 'ts', 'datetime']
-                        for ts_field in timestamp_fields:
-                            if ts_field in frame:
-                                timestamp_key = frame[ts_field]
-                                break
-                        
-                        # Add all fields without prefix
-                        for key, value in frame.items():
-                            if key not in timestamp_fields:  # Don't duplicate timestamp
-                                frame_data[key] = value
-                                
-                    elif isinstance(frame, (list, tuple)):
-                        # Assume first element is timestamp for lists
-                        if len(frame) > 0:
-                            timestamp_key = frame[0]
-                            for j, value in enumerate(frame[1:], 1):
-                                frame_data[f'Value_{j}'] = value
-                    else:
-                        # Use index as timestamp for other types
-                        timestamp_key = i
-                        frame_data['Data'] = str(frame)
-                    
-                    if timestamp_key is not None:
-                        buffer2_data[timestamp_key] = frame_data
-                        all_timestamps.add(timestamp_key)
-            
-            if not all_timestamps:
-                QMessageBox.warning(self, "No Data", "No valid data found after processing.")
-                return None
-            
-            # Combine data based on timestamps
-            combined_data = []
-            
-            # Sort timestamps for consistent output
-            sorted_timestamps = sorted(all_timestamps)
-            
-            for ts in sorted_timestamps:
-                row = {'Timestamp': ts}
-                
-                # Add buffer 1 data if exists
-                if ts in buffer1_data:
-                    row.update(buffer1_data[ts])
-                
-                # Add buffer 2 data if exists (will overwrite buffer1 data if same keys exist)
-                if ts in buffer2_data:
-                    row.update(buffer2_data[ts])
-                
-                combined_data.append(row)
-            
-            # Create DataFrame and save to CSV
-            df = pd.DataFrame(combined_data)
-            
-            # Fill NaN values with empty strings for better readability
-            df = df.fillna('')
-            
-            # Save directly to CSV without metadata
-            df.to_csv(filename, index=False)
-            
-            QMessageBox.information(
-                self,
-                "Export Successful",
-                f"Data successfully saved to:\n{filename}\n\n"
-                f"Total rows: {len(combined_data)}\n"
-                f"File size: {os.path.getsize(filename)} bytes"
-            )
-            
-            return filename
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Export Error",
-                f"Failed to save CSV file:\n{str(e)}"
-            )
-            return None
 
     def is_data_already_saved(self, battery_id, cycle_number):
         # Checks if combination already exists
@@ -653,11 +256,6 @@ class SDCardDataWindow(QWidget):
     def add_saved_file_entry(self, battery_id, cycle_number, data=None):
         # Add entry to saved files
         if self.is_data_already_saved(battery_id, cycle_number):
-            QMessageBox.information(
-                self, 
-                "Duplicate Data", 
-                f"Data for Battery {battery_id} - Cycle {cycle_number} is already saved."
-            )
             return False
         
         # Add to saved_data dictionary
@@ -685,7 +283,7 @@ class SDCardDataWindow(QWidget):
         key = (battery_id, cycle_number)
         if key in self.saved_data:
             # Open the data viewer dialog
-            dialog = DataViewerDialog(battery_id, cycle_number, self.saved_data[key], self)
+            dialog = DataViewerDialog(battery_id, cycle_number, self.saved_data[key], self.main_window, self)
             dialog.exec()
         else:
             QMessageBox.warning(
@@ -820,31 +418,22 @@ class SDCardDataWindow(QWidget):
         self.canvas.draw()
             
     def download_cycle_data(self, battery_id, cycle_number):
-        if self.is_data_already_saved(battery_id, cycle_number):
-            QMessageBox.information(
-                self, 
-                "Duplicate Data", 
-                f"Data for Battery {battery_id} - Cycle {cycle_number} is already saved."
-            )
-            return
-        
+        """Download cycle data and immediately show data viewer dialog"""
         serial_obj = self.get_serial_obj()
         if serial_obj and serial_obj.is_open:
             try:
-                # Save the buffer data to CSV file
-                saved_filename = self.save_as_csv_file(battery_id, cycle_number)
+                # Query additional data via serial
+                data = send_battery_query(serial_obj, self, battery_id, cycle_number)
                 
-                if saved_filename:
-                    # Query additional data via serial
-                    data = send_battery_query(serial_obj, self, battery_id, cycle_number)
-                    
-                    # Add metadata about the saved file
-                    if data is None:
-                        data = {}
-                    data['csv_file'] = saved_filename
-                    data['export_time'] = datetime.now().isoformat()
-                    
-                    self.add_saved_file_entry(battery_id, cycle_number, data)
+                if data is None:
+                    data = {}
+                
+                # Add export time metadata
+                data['export_time'] = datetime.now().isoformat()
+                
+                # Immediately show the data viewer dialog
+                dialog = DataViewerDialog(battery_id, cycle_number, data, self.main_window, self)
+                dialog.exec()
                 
             except Exception as e:
                 QMessageBox.warning(self, "Download Error", f"Failed to download data: {str(e)}")
