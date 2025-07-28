@@ -15,8 +15,10 @@ MESSAGE_IDS = {
     (0x03, 0xE0): "RECENT_DATA",
     # (0x06, 0x5D): "CYCLE_COUNT_DATA",
     (0x04, 0xE0): "CYCLE_COUNT_DATA",
-    (0x01, 0x5D): "DATA_FRAME_1",
-    (0x02, 0x5D): "DATA_FRAME_2",
+    # (0x01, 0x5D): "DATA_FRAME_1",
+    # (0x02, 0x5D): "DATA_FRAME_2",
+    (0x01, 0xB0): "DATA_FRAME_1",
+    (0x02, 0xB0): "DATA_FRAME_2",
 }
 
 def process_message(self, message):
@@ -159,10 +161,36 @@ def handle_data_frame_1(self, message, timestamp):
     charge_voltage = (message[5] << 8 | message[4])
     charge_current = (message[7] << 8 | message[6])
     rel_time = (message[9] << 8 | message[8])
-    error_flags = (message[11] << 8 | message[10])
+    error_flags = (message[11] << 8 | message[10])  
+    
+    if not hasattr(self, 'data_frames_1_buffer'):
+        self.data_frames_1_buffer = []
+        
+    self.data_frames_1_buffer.append(
+        {
+            "timestamp": timestamp,
+            "charge_voltage": charge_voltage,
+            "charge_current": charge_current,   
+            "rel_time": rel_time,
+            "error_flags": error_flags
+        }
+    )
     
 def handle_data_frame_2(self, message, timestamp):
     set_c_rate1 = (message[5] << 8 | message[4])
     set_c_rate2 = (message[7] << 8 | message[6])
     max_volta_temp = (message[9] << 8 | message[8])
     avg_volta_temp = (message[11] << 8 | message[10])
+    
+    if not hasattr(self, 'data_frames_2_buffer'):
+        self.data_frames_2_buffer = []
+        
+    self.data_frames_2_buffer.append(
+        {
+            "timestamp": timestamp,
+            "set_c_rate1": set_c_rate1,
+            "set_c_rate2": set_c_rate2,
+            "max_volta_temp": max_volta_temp,
+            "avg_volta_temp": avg_volta_temp
+        }
+    )
