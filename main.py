@@ -34,11 +34,11 @@ class SerialPortGUI(QWidget):
 
         self.tabs = QTabWidget()
         self.tabs.setFont(default_font)
-        self.live_data = LiveDataWindow(self)
-        self.live_data.setFont(default_font)
+        # self.live_data = LiveDataWindow(self)
+        # self.live_data.setFont(default_font)
         self.sd_card_data = SDCardDataWindow(self)
         self.sd_card_data.setFont(default_font)
-        self.tabs.addTab(self.live_data, "Live Data")
+        # self.tabs.addTab(self.live_data, "Live Data")
         self.tabs.addTab(self.sd_card_data, "SD Card Data")
         self.layout.addWidget(self.tabs)
 
