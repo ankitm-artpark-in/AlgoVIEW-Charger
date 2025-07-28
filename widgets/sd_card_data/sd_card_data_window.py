@@ -29,6 +29,7 @@ class SDCardDataWindow(QWidget):
         self.main_window = main_window
         self.charger_info_labels = {}
         self.saved_data = {}  # To store saved data
+        self.file_checkboxes = {}  # To store checkbox references
         
         default_font = QFont()
         default_font.setPointSize(11)
@@ -71,15 +72,17 @@ class SDCardDataWindow(QWidget):
         layout.addWidget(saved_header)
         
         self.saved_files_table = QTableWidget()
-        self.saved_files_table.setColumnCount(3)
-        self.saved_files_table.setHorizontalHeaderLabels(["Battery ID", "Cycle", "Download Time"])
+        self.saved_files_table.setColumnCount(4)  # Added one more column for checkbox
+        self.saved_files_table.setHorizontalHeaderLabels(["Select", "Battery ID", "Cycle", "Download Time"])
         
         header = self.saved_files_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.saved_files_table.setColumnWidth(0, 80)
-        self.saved_files_table.setColumnWidth(1, 60)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.saved_files_table.setColumnWidth(0, 60)
+        self.saved_files_table.setColumnWidth(1, 80)
+        self.saved_files_table.setColumnWidth(2, 60)
         
         self.saved_files_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.saved_files_table.setAlternatingRowColors(True)
@@ -136,26 +139,56 @@ class SDCardDataWindow(QWidget):
     def create_plot_controls(self):
         controls_layout = QHBoxLayout()
         
-        self.zoom_in_btn = QPushButton("Zoom In")
-        self.zoom_out_btn = QPushButton("Zoom Out")
-        self.reset_zoom_btn = QPushButton("Reset Zoom")
-        self.save_btn = QPushButton("Save Plot")
-        self.clear_btn = QPushButton("Clear Data")
+        # X-axis dropdown
+        x_label = QLabel("X-axis:")
+        self.x_axis_combo = QComboBox()
+        self.x_axis_combo.setMinimumWidth(150)
+        self.x_axis_combo.currentTextChanged.connect(self.update_plot)
         
-        self.zoom_in_btn.clicked.connect(self.zoom_in)
-        self.zoom_out_btn.clicked.connect(self.zoom_out)
-        self.reset_zoom_btn.clicked.connect(self.reset_zoom)
-        self.save_btn.clicked.connect(self.save_plot)
+        # Y-axis dropdown
+        y_label = QLabel("Y-axis:")
+        self.y_axis_combo = QComboBox()
+        self.y_axis_combo.setMinimumWidth(150)
+        self.y_axis_combo.currentTextChanged.connect(self.update_plot)
+        
+        # Plot button
+        self.plot_btn = QPushButton("Plot")
+        self.plot_btn.clicked.connect(self.update_plot)
+        
+        # Clear button
+        self.clear_btn = QPushButton("Clear Plot")
         self.clear_btn.clicked.connect(self.clear_data)
         
-        controls_layout.addWidget(self.zoom_in_btn)
-        controls_layout.addWidget(self.zoom_out_btn)
-        controls_layout.addWidget(self.reset_zoom_btn)
-        controls_layout.addWidget(self.save_btn)
+        controls_layout.addWidget(x_label)
+        controls_layout.addWidget(self.x_axis_combo)
+        controls_layout.addWidget(y_label)
+        controls_layout.addWidget(self.y_axis_combo)
+        controls_layout.addWidget(self.plot_btn)
         controls_layout.addWidget(self.clear_btn)
         controls_layout.addStretch()
         
+        # Initialize with common parameter names as placeholders
+        self.initialize_default_parameters()
+        
         return controls_layout
+
+    def initialize_default_parameters(self):
+        """Initialize dropdowns with common battery parameter names"""
+        # Common battery monitoring parameters
+        default_params = [
+            "voltage", "current", "temperature", "capacity", "charge_level",
+            "time", "timestamp", "cycle_count", "resistance", "power",
+            "energy", "soc", "cell_voltage", "pack_voltage", "cell_temp"
+        ]
+        
+        self.x_axis_combo.addItems(default_params)
+        self.y_axis_combo.addItems(default_params)
+        
+        # Set reasonable defaults
+        if "time" in default_params:
+            self.x_axis_combo.setCurrentText("time")
+        if "voltage" in default_params:
+            self.y_axis_combo.setCurrentText("voltage")
 
     def create_plot_canvas(self):
         self.figure = Figure(figsize=(10, 6))
@@ -265,20 +298,230 @@ class SDCardDataWindow(QWidget):
         row_count = self.saved_files_table.rowCount()
         self.saved_files_table.insertRow(row_count)
         
-        self.saved_files_table.setItem(row_count, 0, QTableWidgetItem(str(battery_id)))
-        self.saved_files_table.setItem(row_count, 1, QTableWidgetItem(str(cycle_number)))
-        self.saved_files_table.setItem(row_count, 2, QTableWidgetItem(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        # Add checkbox in first column
+        checkbox = QCheckBox()
+        checkbox.stateChanged.connect(self.on_checkbox_changed)
+        self.saved_files_table.setCellWidget(row_count, 0, checkbox)
+        self.file_checkboxes[key] = checkbox
         
-        self.saved_files_table.item(row_count, 0).setTextAlignment(Qt.AlignCenter)
+        self.saved_files_table.setItem(row_count, 1, QTableWidgetItem(str(battery_id)))
+        self.saved_files_table.setItem(row_count, 2, QTableWidgetItem(str(cycle_number)))
+        self.saved_files_table.setItem(row_count, 3, QTableWidgetItem(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        
         self.saved_files_table.item(row_count, 1).setTextAlignment(Qt.AlignCenter)
+        self.saved_files_table.item(row_count, 2).setTextAlignment(Qt.AlignCenter)
+        
+        # Update dropdown options with actual data parameters
+        self.update_dropdown_options()
         
         return True
+
+    def on_checkbox_changed(self):
+        """Called when any checkbox state changes"""
+        self.update_dropdown_options()
+
+    def get_selected_files_data(self):
+        """Get data from all selected (checked) files"""
+        selected_data = {}
+        for key, checkbox in self.file_checkboxes.items():
+            if checkbox.isChecked() and key in self.saved_data:
+                selected_data[key] = self.saved_data[key]
+        return selected_data
+
+    def get_all_column_headers(self, selected_data):
+        """Get all unique column headers from selected data, excluding timestamp parameters"""
+        headers = set()
+        timestamp_keywords = ['time', 'timestamp', 'date', 'export_time']
+        
+        for data in selected_data.values():
+            if isinstance(data, dict):
+                # Filter out timestamp-related keys
+                filtered_keys = [key for key in data.keys() 
+                               if not any(keyword in key.lower() for keyword in timestamp_keywords)]
+                headers.update(filtered_keys)
+            elif isinstance(data, pd.DataFrame):
+                # Filter out timestamp-related columns
+                filtered_columns = [col for col in data.columns.tolist() 
+                                  if not any(keyword in col.lower() for keyword in timestamp_keywords)]
+                headers.update(filtered_columns)
+        return sorted(list(headers))
+
+    def update_dropdown_options(self):
+        """Update dropdown options based on selected files"""
+        selected_data = self.get_selected_files_data()
+        
+        if not selected_data:
+            # If no files are selected, keep the default parameters
+            return
+            
+        headers = self.get_all_column_headers(selected_data)
+        
+        if headers:
+            # Store current selections
+            current_x = self.x_axis_combo.currentText()
+            current_y = self.y_axis_combo.currentText()
+            
+            # Clear and update dropdowns
+            self.x_axis_combo.clear()
+            self.y_axis_combo.clear()
+            
+            self.x_axis_combo.addItems(headers)
+            self.y_axis_combo.addItems(headers)
+            
+            # Restore previous selections if they still exist
+            x_index = self.x_axis_combo.findText(current_x)
+            y_index = self.y_axis_combo.findText(current_y)
+            
+            if x_index >= 0:
+                self.x_axis_combo.setCurrentIndex(x_index)
+            elif headers:
+                self.x_axis_combo.setCurrentIndex(0)
+                
+            if y_index >= 0:
+                self.y_axis_combo.setCurrentIndex(y_index)
+            elif len(headers) > 1:
+                self.y_axis_combo.setCurrentIndex(1)
+
+    def update_plot(self):
+        """Update the plot based on selected dropdowns and checked files"""
+        x_column = self.x_axis_combo.currentText()
+        y_column = self.y_axis_combo.currentText()
+        
+        if not x_column or not y_column:
+            return
+            
+        selected_data = self.get_selected_files_data()
+        if not selected_data:
+            # Show message that no files are selected
+            self.ax.clear()
+            self.ax.text(0.5, 0.5, 'No files selected for plotting.\nCheck files in the Saved Files section.', 
+                        horizontalalignment='center', verticalalignment='center', 
+                        transform=self.ax.transAxes, fontsize=12)
+            self.ax.set_xlabel(x_column)
+            self.ax.set_ylabel(y_column)
+            self.ax.set_title(f'{y_column} vs {x_column}')
+            self.canvas.draw()
+            return
+            
+        self.ax.clear()
+        
+        colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray']
+        color_idx = 0
+        plots_created = False
+        
+        for key, data in selected_data.items():
+            battery_id, cycle = key
+            
+            try:
+                if isinstance(data, dict):
+                    if x_column in data and y_column in data:
+                        x_data = data[x_column]
+                        y_data = data[y_column]
+                        
+                        # Skip if data contains timestamp strings
+                        if self.is_timestamp_data(x_data) or self.is_timestamp_data(y_data):
+                            print(f"Skipping timestamp data for {key}: {x_column} vs {y_column}")
+                            continue
+                        
+                        # Convert to numpy arrays if they're lists
+                        if isinstance(x_data, list):
+                            x_data = np.array(x_data)
+                        if isinstance(y_data, list):
+                            y_data = np.array(y_data)
+                            
+                        # Ensure data is numeric
+                        try:
+                            x_data = np.asarray(x_data, dtype=float)
+                            y_data = np.asarray(y_data, dtype=float)
+                        except (ValueError, TypeError):
+                            print(f"Skipping non-numeric data for {key}: {x_column} vs {y_column}")
+                            continue
+                            
+                        label = f"Battery {battery_id} - Cycle {cycle}"
+                        color = colors[color_idx % len(colors)]
+                        self.ax.plot(x_data, y_data, label=label, color=color, marker='o', markersize=2)
+                        color_idx += 1
+                        plots_created = True
+                        
+                elif isinstance(data, pd.DataFrame):
+                    if x_column in data.columns and y_column in data.columns:
+                        x_data = data[x_column]
+                        y_data = data[y_column]
+                        
+                        # Skip if data contains timestamp strings
+                        if self.is_timestamp_data(x_data) or self.is_timestamp_data(y_data):
+                            print(f"Skipping timestamp data for {key}: {x_column} vs {y_column}")
+                            continue
+                            
+                        # Ensure data is numeric
+                        try:
+                            x_data = pd.to_numeric(x_data, errors='coerce')
+                            y_data = pd.to_numeric(y_data, errors='coerce')
+                            
+                            # Remove NaN values
+                            mask = ~(x_data.isna() | y_data.isna())
+                            x_data = x_data[mask]
+                            y_data = y_data[mask]
+                            
+                            if len(x_data) == 0:
+                                print(f"No valid numeric data for {key}: {x_column} vs {y_column}")
+                                continue
+                                
+                        except Exception:
+                            print(f"Skipping non-numeric data for {key}: {x_column} vs {y_column}")
+                            continue
+                        
+                        label = f"Battery {battery_id} - Cycle {cycle}"
+                        color = colors[color_idx % len(colors)]
+                        self.ax.plot(x_data, y_data, label=label, color=color, marker='o', markersize=2)
+                        color_idx += 1
+                        plots_created = True
+                        
+            except Exception as e:
+                print(f"Error plotting data for {key}: {e}")
+                continue
+        
+        self.ax.set_xlabel(x_column)
+        self.ax.set_ylabel(y_column)
+        self.ax.set_title(f'{y_column} vs {x_column}')
+        self.ax.grid(True, alpha=0.3)
+        
+        # Only show legend if there are plots
+        if plots_created:
+            self.ax.legend()
+        else:
+            # Show message when no valid data found
+            self.ax.text(0.5, 0.5, f'No valid numeric data found for\n{x_column} vs {y_column}', 
+                        horizontalalignment='center', verticalalignment='center', 
+                        transform=self.ax.transAxes, fontsize=12)
+            
+        self.canvas.draw()
+
+    def is_timestamp_data(self, data):
+        """Check if data contains timestamp strings"""
+        if isinstance(data, (list, np.ndarray)):
+            if len(data) > 0:
+                sample = data[0] if isinstance(data, (list, np.ndarray)) else data
+                if isinstance(sample, str):
+                    # Check if it looks like a timestamp
+                    timestamp_patterns = ['T', ':', '-', 'Z']
+                    return any(pattern in str(sample) for pattern in timestamp_patterns) and len(str(sample)) > 10
+        elif isinstance(data, pd.Series):
+            if len(data) > 0:
+                sample = data.iloc[0]
+                if isinstance(sample, str):
+                    timestamp_patterns = ['T', ':', '-', 'Z']
+                    return any(pattern in str(sample) for pattern in timestamp_patterns) and len(str(sample)) > 10
+        elif isinstance(data, str):
+            timestamp_patterns = ['T', ':', '-', 'Z']
+            return any(pattern in data for pattern in timestamp_patterns) and len(data) > 10
+        return False
 
     def view_saved_data(self, item):
         """Open data viewer dialog when double-clicking on saved file"""
         row = item.row()
-        battery_id = self.saved_files_table.item(row, 0).text()
-        cycle_number = self.saved_files_table.item(row, 1).text()
+        battery_id = self.saved_files_table.item(row, 1).text()
+        cycle_number = self.saved_files_table.item(row, 2).text()
         
         key = (battery_id, cycle_number)
         if key in self.saved_data:
@@ -307,7 +550,9 @@ class SDCardDataWindow(QWidget):
         
         if action:
             if action.text() == "View Data" and row >= 0:
-                self.view_saved_data(self.saved_files_table.item(row, 0))
+                # Create a dummy item to pass to view_saved_data
+                dummy_item = type('', (), {'row': lambda: row})()
+                self.view_saved_data(dummy_item)
             elif action.text() == "Delete" and row >= 0:
                 self.delete_saved_file_row(row)
             elif action.text() == "Clear All":
@@ -315,14 +560,17 @@ class SDCardDataWindow(QWidget):
 
     def delete_saved_file_row(self, row):
         if row >= 0 and row < self.saved_files_table.rowCount():
-            battery_id = self.saved_files_table.item(row, 0).text()
-            cycle_number = self.saved_files_table.item(row, 1).text()
+            battery_id = self.saved_files_table.item(row, 1).text()
+            cycle_number = self.saved_files_table.item(row, 2).text()
             
             key = (battery_id, cycle_number)
             if key in self.saved_data:
                 del self.saved_data[key]
+            if key in self.file_checkboxes:
+                del self.file_checkboxes[key]
             
             self.saved_files_table.removeRow(row)
+            self.update_dropdown_options()
 
     def clear_all_saved_files(self):
         reply = QMessageBox.question(
@@ -334,7 +582,12 @@ class SDCardDataWindow(QWidget):
         
         if reply == QMessageBox.StandardButton.Yes:
             self.saved_data.clear()
+            self.file_checkboxes.clear()
             self.saved_files_table.setRowCount(0)
+            # Reset to default parameters
+            self.x_axis_combo.clear()
+            self.y_axis_combo.clear()
+            self.initialize_default_parameters()
 
     def show_files_context_menu(self, position):
         menu = QMenu()
@@ -362,54 +615,8 @@ class SDCardDataWindow(QWidget):
     def on_mouse_move(self, event):
         pass
 
-    def zoom_in(self):
-        """Zoom in on the plot"""
-        xlim = self.ax.get_xlim()
-        ylim = self.ax.get_ylim()
-        
-        x_center = (xlim[0] + xlim[1]) / 2
-        y_center = (ylim[0] + ylim[1]) / 2
-        
-        x_range = (xlim[1] - xlim[0]) * 0.4
-        y_range = (ylim[1] - ylim[0]) * 0.4
-        
-        self.ax.set_xlim(x_center - x_range/2, x_center + x_range/2)
-        self.ax.set_ylim(y_center - y_range/2, y_center + y_range/2)
-        self.canvas.draw()
-
-    def zoom_out(self):
-        """Zoom out on the plot"""
-        xlim = self.ax.get_xlim()
-        ylim = self.ax.get_ylim()
-        
-        x_center = (xlim[0] + xlim[1]) / 2
-        y_center = (ylim[0] + ylim[1]) / 2
-        
-        x_range = (xlim[1] - xlim[0]) * 1.25
-        y_range = (ylim[1] - ylim[0]) * 1.25
-        
-        self.ax.set_xlim(x_center - x_range/2, x_center + x_range/2)
-        self.ax.set_ylim(y_center - y_range/2, y_center + y_range/2)
-        self.canvas.draw()
-
-    def reset_zoom(self):
-        """Reset zoom to show all data"""
-        self.ax.relim()
-        self.ax.autoscale_view()
-        self.canvas.draw()
-
-    def save_plot(self):
-        filename, _ = QFileDialog.getSaveFileName(
-            self, 
-            "Save Plot", 
-            f"sd_card_parameter_plot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
-            "PNG Files (*.png);;PDF Files (*.pdf);;SVG Files (*.svg)"
-        )
-        if filename:
-            self.figure.savefig(filename, dpi=300, bbox_inches='tight')
-
     def clear_data(self):
-        """Clear any data if needed"""
+        """Clear the plot"""
         self.ax.clear()
         self.ax.set_xlabel('Time')
         self.ax.set_ylabel('Parameter Value')
