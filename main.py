@@ -1,17 +1,15 @@
 import sys
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QMessageBox, QGroupBox, QHBoxLayout, QComboBox, QPushButton, QLabel, QSizePolicy
+    QApplication, QWidget, QVBoxLayout, QTabWidget
 )
 
 from PySide6.QtGui import QFont
-from PySide6.QtCore import Signal, QTimer
+from PySide6.QtCore import QTimer
 
+# local file imports
 from serial_utils import refresh_ports, connect_serial, disconnect_serial, handle_disconnect, read_serial
 from settings import ConnectionSettings
-
-# Tabs below connection settings
-from PySide6.QtWidgets import QTabWidget
-from widgets import LiveDataWindow, SDCardDataWindow
+from widgets import SDCardDataWindow
 
 class SerialPortGUI(QWidget):
     def __init__(self):
@@ -44,13 +42,10 @@ class SerialPortGUI(QWidget):
 
         self.setLayout(self.layout)
 
-        # Connect signals to slots
+        # Connect signals to buttons
         self.connection_settings.refresh_clicked.connect(self.refresh_ports)
         self.connection_settings.connect_clicked.connect(self.connect_port)
         self.connection_settings.disconnect_clicked.connect(self.disconnect_port)
-
-        self.refresh_ports()
-        self.showMaximized()
 
     def refresh_ports(self):
         refresh_ports(self.connection_settings.port_combo, self)
@@ -71,6 +66,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     default_font = QFont()
     default_font.setPointSize(11)
+    
     window = SerialPortGUI()
     window.setFixedWidth(600)
     window.setFont(default_font)
