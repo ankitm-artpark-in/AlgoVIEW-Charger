@@ -60,9 +60,9 @@ class SDCardDataWindow(QWidget):
         self.create_files_section(left_layout)
         self.create_charger_info_section(left_layout)
         self.create_saved_files_section(left_layout)
-        left_layout.setStretchFactor(self.files_tree, 3)
+        left_layout.setStretchFactor(self.files_tree, 1)
         left_layout.setStretchFactor(self.charger_tree, 1)
-        left_layout.setStretchFactor(self.saved_files_table, 2)
+        left_layout.setStretchFactor(self.saved_files_table, 1)
         
         return left_panel
     
