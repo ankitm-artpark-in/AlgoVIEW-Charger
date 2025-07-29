@@ -72,6 +72,7 @@ if __name__ == "__main__":
     default_font = QFont()
     default_font.setPointSize(11)
     window = SerialPortGUI()
+    window.setFixedWidth(600)
     window.setFont(default_font)
     window.show()
     sys.exit(app.exec())

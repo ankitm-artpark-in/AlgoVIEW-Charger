@@ -43,15 +43,15 @@ class SDCardDataWindow(QWidget):
 
         # Create left and right panels
         left_panel = self.create_left_panel()
-        right_panel = self.create_right_panel()
+        # right_panel = self.create_right_panel()
 
         main_layout.addWidget(left_panel)
-        main_layout.addWidget(right_panel, stretch=1)
+        # main_layout.addWidget(right_panel, stretch=1)
 
     def create_left_panel(self):
         left_panel = QWidget()
         left_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        left_panel.setFixedWidth(400)
+        left_panel.setFixedWidth(550)
         left_layout = QVBoxLayout()
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(0)

@@ -1,13 +1,21 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QTabWidget, QPushButton, QDialogButtonBox, QTextEdit, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QInputDialog, QAbstractItemView, QFileDialog
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QTabWidget, 
+                             QPushButton, QDialogButtonBox, QTextEdit, QTableWidget, 
+                             QTableWidgetItem, QHeaderView, QMessageBox, QInputDialog, 
+                             QAbstractItemView, QFileDialog, QComboBox, QWidget,
+                             QSplitter, QFrame)
 from PySide6.QtCore import Qt
 import pandas as pd
 import csv
 import os
 from datetime import datetime
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import numpy as np
 
 
 class DataViewerDialog(QDialog):
-    """Dialog to display saved data in tabular format"""
+    """Dialog to display saved data in tabular format with plotting capabilities"""
     
     def __init__(self, battery_id, cycle_number, data, main_window, parent=None):
         super().__init__(parent)
@@ -15,12 +23,14 @@ class DataViewerDialog(QDialog):
         self.cycle_number = cycle_number
         self.data = data
         self.main_window = main_window
+        self.combined_data = None  # Will store the combined buffer data
+        self.current_df = None     # Will store current DataFrame for plotting
         self.init_ui()
         
     def init_ui(self):
         self.setWindowTitle(f"Data Viewer - Battery {self.battery_id} - Cycle {self.cycle_number}")
         self.setModal(True)
-        self.resize(800, 600)
+        self.resize(1200, 800)  # Increased size to accommodate plot
         
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -31,28 +41,124 @@ class DataViewerDialog(QDialog):
         header_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(header_label)
         
+        # Create splitter for main content (data tabs + plot)
+        main_splitter = QSplitter(Qt.Horizontal)
+        layout.addWidget(main_splitter)
+        
+        # Left side: Data tabs
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        
         # Create tab widget for different data views
         self.tab_widget = QTabWidget()
-        layout.addWidget(self.tab_widget)
+        left_layout.addWidget(self.tab_widget)
         
-        # Load and display data
+        main_splitter.addWidget(left_widget)
+        
+        # Right side: Plot controls and canvas (create this first)
+        right_widget = self.create_plot_widget()
+        main_splitter.addWidget(right_widget)
+        
+        # Load and display data (after plot widgets are created)
         self.load_data_tabs()
         
-        # Button box
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        button_box.rejected.connect(self.close)
+        # Set splitter proportions (60% data, 40% plot)
+        main_splitter.setSizes([720, 480])
         
-        # Add export button
+        # Action buttons row (Export, Save, Close)
+        button_layout = QHBoxLayout()
+        
+        # Export button
         export_btn = QPushButton("Export to CSV")
+        export_btn.setMinimumHeight(35)
         export_btn.clicked.connect(self.export_data_to_csv)
-        button_box.addButton(export_btn, QDialogButtonBox.ButtonRole.ActionRole)
+        export_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
+        button_layout.addWidget(export_btn)
         
-        # Add save button (saves to the saved files list)
+        # Save button (saves to the saved files list)
         save_btn = QPushButton("Save Data")
+        save_btn.setMinimumHeight(35)
         save_btn.clicked.connect(self.save_data_to_list)
-        button_box.addButton(save_btn, QDialogButtonBox.ButtonRole.ActionRole)
+        save_btn.setStyleSheet("QPushButton { background-color: #2196F3; color: white; font-weight: bold; }")
+        button_layout.addWidget(save_btn)
         
-        layout.addWidget(button_box)
+        # Add some stretch
+        button_layout.addStretch()
+        
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.setMinimumHeight(35)
+        close_btn.clicked.connect(self.close)
+        close_btn.setStyleSheet("QPushButton { background-color: #f44336; color: white; font-weight: bold; }")
+        button_layout.addWidget(close_btn)
+        
+        layout.addLayout(button_layout)
+        
+    def create_plot_widget(self):
+        """Create the plotting widget with controls and canvas"""
+        plot_widget = QWidget()
+        plot_layout = QVBoxLayout(plot_widget)
+        
+        # Plot controls
+        controls_frame = QFrame()
+        controls_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        controls_layout = QVBoxLayout(controls_frame)
+        
+        # Title
+        plot_title = QLabel("Data Plotting")
+        plot_title.setStyleSheet("font-weight: bold; font-size: 12px; padding: 5px;")
+        plot_title.setAlignment(Qt.AlignCenter)
+        controls_layout.addWidget(plot_title)
+        
+        # Data source selection
+        source_layout = QHBoxLayout()
+        source_layout.addWidget(QLabel("Data Source:"))
+        self.data_source_combo = QComboBox()
+        self.data_source_combo.currentTextChanged.connect(self.on_data_source_changed)
+        source_layout.addWidget(self.data_source_combo)
+        controls_layout.addLayout(source_layout)
+        
+        # X-axis selection
+        x_layout = QHBoxLayout()
+        x_layout.addWidget(QLabel("X-axis:"))
+        self.x_axis_combo = QComboBox()
+        self.x_axis_combo.setMinimumWidth(120)
+        x_layout.addWidget(self.x_axis_combo)
+        controls_layout.addLayout(x_layout)
+        
+        # Y-axis selection
+        y_layout = QHBoxLayout()
+        y_layout.addWidget(QLabel("Y-axis:"))
+        self.y_axis_combo = QComboBox()
+        self.y_axis_combo.setMinimumWidth(120)
+        y_layout.addWidget(self.y_axis_combo)
+        controls_layout.addLayout(y_layout)
+        
+        # Plot buttons
+        button_layout = QHBoxLayout()
+        self.plot_btn = QPushButton("Create Plot")
+        self.plot_btn.clicked.connect(self.create_plot)
+        self.clear_plot_btn = QPushButton("Clear Plot")
+        self.clear_plot_btn.clicked.connect(self.clear_plot)
+        
+        button_layout.addWidget(self.plot_btn)
+        button_layout.addWidget(self.clear_plot_btn)
+        controls_layout.addLayout(button_layout)
+        
+        plot_layout.addWidget(controls_frame)
+        
+        # Plot canvas
+        self.figure = Figure(figsize=(8, 6))
+        self.canvas = FigureCanvas(self.figure)
+        self.ax = self.figure.add_subplot(111)
+        
+        self.ax.set_title('Select data and axes to create plot')
+        self.ax.grid(True, alpha=0.3)
+        
+        plot_layout.addWidget(self.canvas)
+        
+        return plot_widget
         
     def load_data_tabs(self):
         """Load data into different tabs based on data structure"""
@@ -68,14 +174,192 @@ class DataViewerDialog(QDialog):
         # Add metadata tab
         self.add_metadata_tab()
         
+        # Initialize plot controls (only if plot widgets exist)
+        if hasattr(self, 'data_source_combo'):
+            self.initialize_plot_controls()
+        
+    def initialize_plot_controls(self):
+        """Initialize the plot control dropdowns"""
+        self.data_source_combo.clear()
+        
+        # Add available data sources
+        if self.combined_data:
+            self.data_source_combo.addItem("Buffer Data")
+        
+        serial_data = {k: v for k, v in self.data.items() 
+                      if k not in ['csv_file', 'export_time']}
+        if serial_data:
+            self.data_source_combo.addItem("Serial Data")
+            
+        # Initialize with first available source
+        if self.data_source_combo.count() > 0:
+            self.on_data_source_changed(self.data_source_combo.currentText())
+        
+    def on_data_source_changed(self, source_name):
+        """Handle data source selection change"""
+        self.x_axis_combo.clear()
+        self.y_axis_combo.clear()
+        
+        if source_name == "Buffer Data" and self.combined_data:
+            df = pd.DataFrame(self.combined_data)
+            self.current_df = df
+            
+            # Get numeric columns for plotting
+            numeric_columns = []
+            for col in df.columns:
+                try:
+                    pd.to_numeric(df[col], errors='raise')
+                    numeric_columns.append(col)
+                except:
+                    # Check if it's a timestamp column
+                    if 'time' in col.lower() or 'timestamp' in col.lower():
+                        numeric_columns.append(col)
+            
+            if numeric_columns:
+                self.x_axis_combo.addItems(numeric_columns)
+                self.y_axis_combo.addItems(numeric_columns)
+                
+                # Set reasonable defaults
+                if len(numeric_columns) > 1:
+                    self.y_axis_combo.setCurrentIndex(1)
+                    
+        elif source_name == "Serial Data":
+            serial_data = {k: v for k, v in self.data.items() 
+                          if k not in ['csv_file', 'export_time']}
+            if serial_data:
+                # Flatten the serial data and convert to DataFrame
+                flattened = self.flatten_data(serial_data)
+                
+                # Convert to list of dictionaries for DataFrame
+                data_list = []
+                for key, value in flattened.items():
+                    try:
+                        # Try to convert to numeric
+                        numeric_value = float(value)
+                        data_list.append({'Parameter': key, 'Value': numeric_value})
+                    except:
+                        # Skip non-numeric values for plotting
+                        continue
+                
+                if data_list:
+                    df = pd.DataFrame(data_list)
+                    self.current_df = df
+                    
+                    columns = df.columns.tolist()
+                    self.x_axis_combo.addItems(columns)
+                    self.y_axis_combo.addItems(columns)
+                    
+                    # Set defaults
+                    if 'Parameter' in columns and 'Value' in columns:
+                        self.x_axis_combo.setCurrentText('Parameter')
+                        self.y_axis_combo.setCurrentText('Value')
+        
+    def create_plot(self):
+        """Create plot based on selected axes"""
+        if self.current_df is None or self.current_df.empty:
+            QMessageBox.warning(self, "No Data", "No data available for plotting.")
+            return
+            
+        x_column = self.x_axis_combo.currentText()
+        y_column = self.y_axis_combo.currentText()
+        
+        if not x_column or not y_column:
+            QMessageBox.warning(self, "Invalid Selection", "Please select both X and Y axes.")
+            return
+            
+        try:
+            self.ax.clear()
+            
+            df = self.current_df
+            data_source = self.data_source_combo.currentText()
+            
+            if data_source == "Buffer Data":
+                # Handle buffer data plotting
+                x_data = df[x_column]
+                y_data = df[y_column]
+                
+                # Try to convert to numeric, handling timestamps
+                if self.is_timestamp_column(x_column):
+                    try:
+                        x_data = pd.to_datetime(x_data)
+                    except:
+                        x_data = range(len(x_data))
+                else:
+                    try:
+                        x_data = pd.to_numeric(x_data, errors='coerce')
+                    except:
+                        x_data = range(len(x_data))
+                
+                try:
+                    y_data = pd.to_numeric(y_data, errors='coerce')
+                except:
+                    QMessageBox.warning(self, "Invalid Data", f"Cannot convert {y_column} to numeric values.")
+                    return
+                
+                # Remove NaN values
+                if isinstance(x_data, pd.Series):
+                    mask = ~(x_data.isna() | y_data.isna())
+                    x_data = x_data[mask]
+                    y_data = y_data[mask]
+                
+                if len(x_data) == 0 or len(y_data) == 0:
+                    QMessageBox.warning(self, "No Valid Data", "No valid numeric data found for plotting.")
+                    return
+                
+                self.ax.plot(x_data, y_data, 'b-o', markersize=3, linewidth=1)
+                self.ax.set_xlabel(x_column)
+                self.ax.set_ylabel(y_column)
+                self.ax.set_title(f'{y_column} vs {x_column}\nBattery {self.battery_id} - Cycle {self.cycle_number}')
+                
+            elif data_source == "Serial Data":
+                # Handle serial data plotting (typically parameter vs value)
+                if x_column == 'Parameter' and y_column == 'Value':
+                    # Bar plot for parameter values
+                    self.ax.bar(range(len(df)), df['Value'])
+                    self.ax.set_xticks(range(len(df)))
+                    self.ax.set_xticklabels(df['Parameter'], rotation=45, ha='right')
+                    self.ax.set_ylabel('Value')
+                    self.ax.set_title(f'Serial Data Parameters\nBattery {self.battery_id} - Cycle {self.cycle_number}')
+                else:
+                    # Regular line plot
+                    x_data = df[x_column]
+                    y_data = df[y_column]
+                    self.ax.plot(x_data, y_data, 'r-o', markersize=3, linewidth=1)
+                    self.ax.set_xlabel(x_column)
+                    self.ax.set_ylabel(y_column)
+                    self.ax.set_title(f'{y_column} vs {x_column}\nBattery {self.battery_id} - Cycle {self.cycle_number}')
+            
+            self.ax.grid(True, alpha=0.3)
+            
+            # Auto-format x-axis if it's datetime
+            if hasattr(x_data, 'dtype') and 'datetime' in str(x_data.dtype):
+                self.figure.autofmt_xdate()
+            
+            self.canvas.draw()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Plot Error", f"Failed to create plot:\n{str(e)}")
+    
+    def clear_plot(self):
+        """Clear the current plot"""
+        self.ax.clear()
+        self.ax.set_title('Select data and axes to create plot')
+        self.ax.grid(True, alpha=0.3)
+        self.canvas.draw()
+        
+    def is_timestamp_column(self, column_name):
+        """Check if column contains timestamp data"""
+        timestamp_keywords = ['time', 'timestamp', 'date', 'datetime']
+        return any(keyword in column_name.lower() for keyword in timestamp_keywords)
+        
     def load_buffer_data_tab(self):
         """Add tab with buffer data from main window"""
         try:
-            combined_data = self.get_combined_buffer_data()
-            if combined_data:
-                df = pd.DataFrame(combined_data)
+            self.combined_data = self.get_combined_buffer_data()
+            if self.combined_data:
+                df = pd.DataFrame(self.combined_data)
                 table_widget = self.create_table_from_dataframe(df)
-                self.tab_widget.addTab(table_widget, f"Buffer Data ({len(combined_data)} rows)")
+                self.tab_widget.addTab(table_widget, f"Buffer Data ({len(self.combined_data)} rows)")
             else:
                 self.add_empty_tab("No Buffer Data Available")
         except Exception as e:
