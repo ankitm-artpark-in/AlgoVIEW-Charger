@@ -18,7 +18,7 @@ def send_frame(serial_obj, command, parent_widget):
                 
             elif command == "Recent_Data":
                 # msg = bytes([0x30, 0xAA, 0x00, 0xB0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-                msg = bytes([0x01, 0xAA, 0x00, 0xB0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+                msg = bytes([0x01, 0xAA, 0x00, 0xB1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
                 
             elif command == "Cycle_Count_Data":
                 # msg = bytes([0x30, 0xAA, 0x00, 0xB2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
@@ -28,7 +28,7 @@ def send_frame(serial_obj, command, parent_widget):
                 return
             
             send_raw_msg(serial_obj, msg, parent_widget)
-            # QMessageBox.information(parent_widget, "Message Sent", "Command sent successfully.")
+            QMessageBox.information(parent_widget, "Message Sent", "Command sent successfully.")
             
         except Exception as e:
             QMessageBox.critical(parent_widget, "Error", f"Error during sending command: {e}")

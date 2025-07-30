@@ -12,9 +12,10 @@ MESSAGE_IDS = {
     (0xB1, 0xDE): "DEBUG_MESSAGE_1",
     (0xB2, 0xDE): "DEBUG_MESSAGE_2",
     # (0x10, 0x5D): "RECENT_DATA",
-    (0x03, 0xE0): "RECENT_DATA",
+    # (0x03, 0xE0): "RECENT_DATA",
     # (0x06, 0x5D): "CYCLE_COUNT_DATA",
-    (0x04, 0xE0): "CYCLE_COUNT_DATA",
+    (0x06, 0x5D): "DISPLAY_DATA",
+    # (0x04, 0xE0): "CYCLE_COUNT_DATA",
     # (0x01, 0x5D): "DATA_FRAME_1",
     # (0x02, 0x5D): "DATA_FRAME_2",
     (0x01, 0xB0): "DATA_FRAME_1",
@@ -26,7 +27,7 @@ def process_message(self, message):
     msg_id = (message[2], message[3])
     msg_type = MESSAGE_IDS.get(msg_id, "Unknown")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-    # print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
+    print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
 
     message_handlers = {
         "CHARGER_VIT": handle_charger_vit,
@@ -36,10 +37,11 @@ def process_message(self, message):
         "CHARGER_INFO": handle_charger_info,
         "DEBUG_MESSAGE_1": handle_debug_message_1,
         "DEBUG_MESSAGE_2": handle_debug_message_2,
-        "RECENT_DATA": handle_recent_data,
-        "CYCLE_COUNT_DATA": handle_cycle_count_data,
+        # "RECENT_DATA": handle_recent_data,
+        # "CYCLE_COUNT_DATA": handle_cycle_count_data,
         "DATA_FRAME_1": handle_data_frame_1,
         "DATA_FRAME_2": handle_data_frame_2,
+        "DISPLAY_DATA": handle_display_data,
     }
 
     handler = message_handlers.get(msg_type)
@@ -141,6 +143,22 @@ def handle_debug_message_2(self, message, timestamp):
     # self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Volta Heart Beat", str(volta_heart_beat))
     # self.live_data.update_parameter_value("DEBUG_MESSAGE_2", "Charger Error Flag", str(charger_error_flag))
     
+def handle_display_data(self, message, timestamp):
+    if (message[4] == 0x00 and message[5] == 0x00 and message[6] == 0x00 and message[7] == 0x00):
+        battery_id = (message[10] << 8 | message[9])
+        if not hasattr(self, "battery_ids"):
+            self.battery_ids = []
+        if battery_id not in self.battery_ids:
+            self.battery_ids.append(battery_id)
+            self.sd_card_data.update_files_tree()
+    if (message[9] == 0x00 and message[10] == 0x00):
+        bat_id = (message[5] << 8 | message[4])
+        cycle_count = (message[7] << 8 | message[6])
+        if not hasattr(self, 'cycle_counts'):
+            self.cycle_counts = {}
+        self.cycle_counts[bat_id] = cycle_count
+        self.sd_card_data.update_files_tree()
+    
 def handle_recent_data(self, message, timestamp):
     battery_id = (message[5] << 8 | message[4])
     if not hasattr(self, 'battery_ids'):
@@ -151,7 +169,7 @@ def handle_recent_data(self, message, timestamp):
     
 def handle_cycle_count_data(self, message, timestamp):
     battery_id = (message[5] << 8 | message[4])
-    cycle_count = (message[7] << 8 | message[6]) + 2
+    cycle_count = (message[7] << 8 | message[6])
     if not hasattr(self, 'cycle_counts'):
         self.cycle_counts = {}
     self.cycle_counts[battery_id] = cycle_count
