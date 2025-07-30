@@ -127,7 +127,7 @@ class LiveDataWindow(QWidget):
         # Timer for updating plot
         self.plot_timer = QTimer()
         self.plot_timer.timeout.connect(self.update_plot)
-        self.plot_timer.start(100)  # Update every 100ms
+        self.plot_timer.start(1000)  # Update every 100ms
 
     def populate_tree(self):
         self.message_structure = {

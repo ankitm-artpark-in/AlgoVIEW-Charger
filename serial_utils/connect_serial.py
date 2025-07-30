@@ -12,7 +12,7 @@ def connect_serial(dropdown, connection_settings, parent_widget):
             # Enable disconnect, disable connect
             connection_settings.disconnect_button.setEnabled(True)
             connection_settings.connect_button.setEnabled(False)
-            send_frame(ser, "Reception_ONCE", parent_widget)
+            # send_frame(ser, "Reception_ON", parent_widget)
             send_frame(ser, "Recent_Data", parent_widget)
             time.sleep(2)
             send_frame(ser, "Cycle_Count_Data", parent_widget)
