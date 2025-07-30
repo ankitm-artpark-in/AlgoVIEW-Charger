@@ -16,10 +16,8 @@ MESSAGE_IDS = {
     # (0x06, 0x5D): "CYCLE_COUNT_DATA",
     (0x06, 0x5D): "DISPLAY_DATA",
     # (0x04, 0xE0): "CYCLE_COUNT_DATA",
-    # (0x01, 0x5D): "DATA_FRAME_1",
-    # (0x02, 0x5D): "DATA_FRAME_2",
-    (0x01, 0xB0): "DATA_FRAME_1",
-    (0x02, 0xB0): "DATA_FRAME_2",
+    (0x01, 0x5D): "DATA_FRAME_1",
+    (0x02, 0x5D): "DATA_FRAME_2",
 }
 
 def process_message(self, message):
@@ -158,22 +156,6 @@ def handle_display_data(self, message, timestamp):
             self.cycle_counts = {}
         self.cycle_counts[bat_id] = cycle_count
         self.sd_card_data.update_files_tree()
-    
-def handle_recent_data(self, message, timestamp):
-    battery_id = (message[5] << 8 | message[4])
-    if not hasattr(self, 'battery_ids'):
-        self.battery_ids = []
-    if battery_id not in self.battery_ids:
-        self.battery_ids.append(battery_id)
-        self.sd_card_data.update_files_tree()
-    
-def handle_cycle_count_data(self, message, timestamp):
-    battery_id = (message[5] << 8 | message[4])
-    cycle_count = (message[7] << 8 | message[6])
-    if not hasattr(self, 'cycle_counts'):
-        self.cycle_counts = {}
-    self.cycle_counts[battery_id] = cycle_count
-    self.sd_card_data.update_files_tree()
     
 def handle_data_frame_1(self, message, timestamp):
     charge_voltage = (message[5] << 8 | message[4])

@@ -25,7 +25,7 @@ class SerialPortGUI(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.read_serial_data)
-        self.timer.setInterval(1000)
+        self.timer.setInterval(100)
 
         self.connection_settings = ConnectionSettings(self)
         self.layout.addWidget(self.connection_settings)
