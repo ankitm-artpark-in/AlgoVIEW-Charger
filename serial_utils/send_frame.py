@@ -28,6 +28,7 @@ def send_frame(serial_obj, command, parent_widget):
                 return
             
             send_raw_msg(serial_obj, msg, parent_widget)
+            print(f"Sent command: {command} and msg: {' '.join(f'{b:02X}' for b in msg)}")
             QMessageBox.information(parent_widget, "Message Sent", "Command sent successfully.")
             
         except Exception as e:
@@ -49,7 +50,8 @@ def send_battery_query(serial_obj, parent_widget, battery_id, cycle_count):
                         0x00, 0x00])
             
             send_raw_msg(serial_obj, msg, parent_widget)
-            # QMessageBox.information(parent_widget, "Message Sent", "Battery query sent successfully.")
+            print(f"Sent battery query: {' '.join(f'{b:02X}' for b in msg)}")
+            QMessageBox.information(parent_widget, "Message Sent", "Battery query sent successfully.")
             
         except Exception as e:
             QMessageBox.critical(parent_widget, "Error", f"Error during sending battery query: {e}")

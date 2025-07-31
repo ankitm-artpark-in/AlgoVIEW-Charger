@@ -14,6 +14,7 @@ import os
 import re
 from collections import defaultdict, deque
 
+from serial_utils.read_serial import read_serial
 from serial_utils.send_frame import send_battery_query
 from ..color_display_box import ColorBoxComboBox, ColorBoxDelegate
 from dialogs import PasswordDialog
@@ -481,6 +482,7 @@ class SDCardDataWindow(QWidget):
             try:
                 # Query additional data via serial
                 data = send_battery_query(serial_obj, self, battery_id, cycle_number)
+                read_serial(serial_obj, self.main_window.buffer, self.main_window, self.main_window.connection_settings)
                 
                 if data is None:
                     data = {}

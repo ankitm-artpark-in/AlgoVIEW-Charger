@@ -1,4 +1,6 @@
 import sys
+sys.dont_write_bytecode = True
+
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QTabWidget
 )
@@ -23,9 +25,9 @@ class SerialPortGUI(QWidget):
         default_font.setPointSize(11)
         self.setFont(default_font)
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.read_serial_data)
-        self.timer.setInterval(1000)
+        # self.timer = QTimer()
+        # self.timer.timeout.connect(self.read_serial_data)
+        # self.timer.setInterval(1000)
 
         self.connection_settings = ConnectionSettings(self)
         self.layout.addWidget(self.connection_settings)
@@ -53,11 +55,11 @@ class SerialPortGUI(QWidget):
     def connect_port(self):
         self.buffer.clear()
         self.serial_obj = connect_serial(self.connection_settings.port_combo, self.connection_settings, self)
-        if self.serial_obj and self.serial_obj.is_open:
-            self.timer.start()
+        # if self.serial_obj and self.serial_obj.is_open:
+            # self.timer.start()
 
     def disconnect_port(self):
-        self.timer.stop()
+        # self.timer.stop()
         self.serial_obj = disconnect_serial(self.serial_obj, self.connection_settings, self)
 
     def read_serial_data(self):
