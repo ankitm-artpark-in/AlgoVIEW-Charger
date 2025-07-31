@@ -51,6 +51,7 @@ class SerialPortGUI(QWidget):
         refresh_ports(self.connection_settings.port_combo, self)
 
     def connect_port(self):
+        self.buffer.clear()
         self.serial_obj = connect_serial(self.connection_settings.port_combo, self.connection_settings, self)
         if self.serial_obj and self.serial_obj.is_open:
             self.timer.start()
