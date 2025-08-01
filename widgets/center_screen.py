@@ -17,14 +17,14 @@ class CenterScreen(QWidget):
     def init_ui(self):
         main_layout = QVBoxLayout()
         # Title label
-        title_label = QLabel("Battery IDs and Cycle Counts")
+        title_label = QLabel("Saved Logs")
         title_label.setFont(self.default_font)
         main_layout.addWidget(title_label)
 
         # Table setup
         self.table = QTableWidget()
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Send Query"])
+        self.table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Download Data"])
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
@@ -45,7 +45,7 @@ class CenterScreen(QWidget):
         
         self.table.setRowCount(len(battery_ids))
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Send Query"])
+        self.table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Download Data"])
         
         for row, bat_id in enumerate(battery_ids):
             self.table.setItem(row, 0, QTableWidgetItem(str(bat_id)))
@@ -61,7 +61,7 @@ class CenterScreen(QWidget):
             self.table.setCellWidget(row, 1, cycle_count_combo)
             
             # Send Query button for this row
-            send_btn = QPushButton("Send Query")
+            send_btn = QPushButton("Download Data")
             
             def make_send_handler(bid, combo):
                 return lambda: send_battery_query(
