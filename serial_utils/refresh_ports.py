@@ -6,9 +6,5 @@ def get_available_ports():
 
 def refresh_ports(dropdown, parent_widget):
     dropdown.clear()
-    ports = get_available_ports()
-    if ports:
+    if ports := get_available_ports():
         dropdown.addItems(ports)
-    else:
-        # Dropdown remains empty, no popup shown
-        pass

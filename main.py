@@ -10,8 +10,7 @@ from PySide6.QtCore import QTimer
 
 # local file imports
 from serial_utils import refresh_ports, connect_serial, disconnect_serial, handle_disconnect, read_serial
-from settings import ConnectionSettings
-from widgets import SDCardDataWindow
+from widgets import ConnectionSettings, CenterScreen
 
 class SerialPortGUI(QWidget):
     def __init__(self):
@@ -31,17 +30,11 @@ class SerialPortGUI(QWidget):
 
         self.connection_settings = ConnectionSettings(self)
         self.layout.addWidget(self.connection_settings)
-
-        self.tabs = QTabWidget()
-        self.tabs.setFont(default_font)
-        # self.live_data = LiveDataWindow(self)
-        # self.live_data.setFont(default_font)
-        self.sd_card_data = SDCardDataWindow(self)
-        self.sd_card_data.setFont(default_font)
-        # self.tabs.addTab(self.live_data, "Live Data")
-        self.tabs.addTab(self.sd_card_data, "SD Card Data")
-        self.layout.addWidget(self.tabs)
-
+        
+        self.center_screen_widget = CenterScreen(self)
+        self.layout.addWidget(self.center_screen_widget)
+        
+        # Set the layout
         self.setLayout(self.layout)
 
         # Connect signals to buttons

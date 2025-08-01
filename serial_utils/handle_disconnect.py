@@ -7,6 +7,7 @@ def handle_disconnect(serial_obj, connection_settings, parent_widget, message):
         except:
             pass
     serial_obj = None
+    
     # Use connection_settings for button and combo state
     connection_settings.connect_button.setEnabled(True)
     connection_settings.disconnect_button.setEnabled(False)
