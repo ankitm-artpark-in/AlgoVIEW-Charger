@@ -2,7 +2,7 @@ import sys
 sys.dont_write_bytecode = True
 
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QTabWidget
+    QApplication, QWidget, QVBoxLayout, QTabWidget, QGroupBox, QGridLayout, QLabel, QTableWidget, QHeaderView, QComboBox, QPushButton, QTableWidgetItem
 )
 
 from PySide6.QtGui import QFont
@@ -25,7 +25,6 @@ class SerialPortGUI(QWidget):
         self.setFont(default_font)
 
         # Charger Info Section
-        from PySide6.QtWidgets import QGroupBox, QGridLayout, QLabel
         self.charger_info_box = QGroupBox("Charger Info")
         self.charger_info_layout = QGridLayout()
         self.charger_hw_label = QLabel("-")
@@ -33,6 +32,7 @@ class SerialPortGUI(QWidget):
         self.charger_serial_label = QLabel("-")
         self.charger_fw_label = QLabel("-")
         # 2x2 grid: (0,0) HW, (0,1) Product, (1,0) Serial, (1,1) FW
+        
         self.charger_info_layout.addWidget(QLabel("HW Version:"), 0, 0)
         self.charger_info_layout.addWidget(self.charger_hw_label, 0, 1)
         self.charger_info_layout.addWidget(QLabel("Product ID:"), 0, 2)
