@@ -82,6 +82,10 @@ def handle_charger_info(self, message, timestamp):
     serial_no = '.'.join([f'{b:02X}' for b in message[6:10]])
     fw_major = message[10]
     fw_minor = message[11]
+
+    # Update the charger info in the GUI if the method exists
+    if hasattr(self, 'update_charger_info'):
+        self.update_charger_info(hw_version, product_id, serial_no, fw_major, fw_minor)
     
 def handle_debug_message_1(self, message, timestamp):
     cell_count = message[4]
@@ -105,7 +109,7 @@ def handle_display_data(self, message, timestamp):
             self.battery_ids = []
         if battery_id not in self.battery_ids:
             self.battery_ids.append(battery_id)
-            self.sd_card_data.update_files_tree()
+        self.center_screen_widget.refresh_table()
 
     if (message[9] == 0x00 and message[10] == 0x00):
         bat_id = (message[5] << 8 | message[4])
@@ -113,7 +117,7 @@ def handle_display_data(self, message, timestamp):
         if not hasattr(self, 'cycle_counts'):
             self.cycle_counts = {}
         self.cycle_counts[bat_id] = cycle_count
-        self.sd_card_data.update_files_tree()
+        self.center_screen_widget.refresh_table()
     
 def handle_data_frame(self, message, timestamp, battery_id, cycle_counts):
     charge_voltage = (message[5] << 8 | message[4])
