@@ -1,7 +1,9 @@
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QTableWidgetItem, QTableWidget, QVBoxLayout, QLabel, QPushButton, QHeaderView, QComboBox, QPushButton)
 from PySide6.QtGui import QFont
 
+from serial_utils.read_serial import read_serial_21
 from serial_utils.send_frame import send_battery_query
+from .connection_settings import ConnectionSettings
 
 class CenterScreen(QWidget):
     def __init__(self, main_window):
@@ -72,4 +74,5 @@ class CenterScreen(QWidget):
                 )
 
             send_btn.clicked.connect(make_send_handler(bat_id, cycle_count_combo))
+            read_serial_21(self.main_window.serial_obj, self.main_window.buffer, self, self.main_window.connection_settings)
             self.table.setCellWidget(row, 2, send_btn)        
