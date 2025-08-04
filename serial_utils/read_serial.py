@@ -1,3 +1,4 @@
+import time
 import serial
 from PySide6.QtWidgets import QMessageBox
 from parsers.message_parser import process_message
@@ -13,6 +14,7 @@ def read_serial(serial_obj, buffer, parent_widget, connection_settings):
                 while len(buffer) >= 15:
                     if buffer[0] == 0x01 and buffer[14] == 0x02:
                         process_message(parent_widget, buffer[:15])
+                        time.sleep(0.001)
                         buffer = buffer[15:]
                     else:
                         buffer = buffer[1:]
