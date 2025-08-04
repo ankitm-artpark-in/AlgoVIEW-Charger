@@ -480,8 +480,10 @@ class SDCardDataWindow(QWidget):
         serial_obj = self.get_serial_obj()
         if serial_obj and serial_obj.is_open:
             try:
+
                 # Query additional data via serial
                 data = send_battery_query(serial_obj, self, battery_id, cycle_number)
+                # for i in range(10):
                 read_serial(serial_obj, self.main_window.buffer, self.main_window, self.main_window.connection_settings)
                 
                 if data is None:
