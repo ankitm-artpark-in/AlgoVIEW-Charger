@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QTableWidgetItem, QTableWidget, QVBoxLayout, QLabel, QPushButton, QHeaderView, QComboBox, QPushButton)
 from PySide6.QtGui import QFont
 
-from serial_utils.read_serial import read_serial_21
+from serial_utils.read_serial import read_serial_15, read_serial_21
 from serial_utils.send_frame import send_battery_query
 from .connection_settings import ConnectionSettings
 
@@ -66,13 +66,22 @@ class CenterScreen(QWidget):
             send_btn = QPushButton("Download Data")
             
             def make_send_handler(bid, combo):
-                return lambda: send_battery_query(
-                    getattr(self.main_window, 'serial_obj', None),
-                    self,
-                    bid,
-                    combo.currentText() if combo.currentText().isdigit() else 0
-                )
+                def handler():
+                    send_battery_query(
+                        getattr(self.main_window, 'serial_obj', None),
+                        self,
+                        bid,
+                        combo.currentText() if combo.currentText().isdigit() else 0
+                    )
+                    
+                    read_serial_15(
+                        getattr(self.main_window, 'serial_obj', None),
+                        self.main_window.buffer,
+                        self.main_window,
+                        self.main_window.connection_settings,
+                    )
+                return handler
 
             send_btn.clicked.connect(make_send_handler(bat_id, cycle_count_combo))
-            read_serial_21(self.main_window.serial_obj, self.main_window.buffer, self, self.main_window.connection_settings)
+            
             self.table.setCellWidget(row, 2, send_btn)        
