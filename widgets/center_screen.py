@@ -66,21 +66,13 @@ class CenterScreen(QWidget):
             send_btn = QPushButton("Download Data")
             
             def make_send_handler(bid, combo):
-                def handler():
-                    send_battery_query(
-                        getattr(self.main_window, 'serial_obj', None),
-                        self,
-                        bid,
-                        combo.currentText() if combo.currentText().isdigit() else 0
-                    )
-                    
-                    read_serial_15(
-                        getattr(self.main_window, 'serial_obj', None),
-                        self.main_window.buffer,
-                        self.main_window,
-                        self.main_window.connection_settings
-                    )
-                return handler
+                return lambda: send_battery_query(
+                    getattr(self.main_window, 'serial_obj', None),
+                    self,
+                    bid,
+                    combo.currentText() if combo.currentText().isdigit() else 0
+                )
 
             send_btn.clicked.connect(make_send_handler(bat_id, cycle_count_combo))
+            read_serial_21(self.main_window.serial_obj, self.main_window.buffer, self, self.main_window.connection_settings)
             self.table.setCellWidget(row, 2, send_btn)        
