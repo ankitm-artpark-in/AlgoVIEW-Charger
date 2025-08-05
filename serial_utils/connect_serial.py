@@ -2,7 +2,7 @@ import time
 import serial
 from PySide6.QtWidgets import QMessageBox
 
-from serial_utils.read_serial import read_serial_15, read_serial_21
+from serial_utils.read_serial import read_serial_15, read_serial_23
 from .send_frame import send_frame
 
 def connect_serial(dropdown, connection_settings, parent_widget):

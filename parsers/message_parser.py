@@ -14,7 +14,7 @@ MESSAGE_IDS_15 = {
     (0x01, 0x5D): "DATA_FRAME",
 }
 
-MESSAGE_IDS_21 = {
+MESSAGE_IDS_23 = {
     (0x05, 0x5D): "DATA_FRAME",
 }
 
@@ -44,19 +44,21 @@ def process_message_15(self, message, battery_ids=None, cycle_counts=None):
     if msg_type == "DATA_FRAME":
         handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
         
-def process_message_21(self, message):
+def process_message_23(self, message, battery_ids=None, cycle_counts=None):
     hex_data = ' '.join([f'{b:02X}' for b in message])
     msg_id = (message[2], message[3])
-    msg_type = MESSAGE_IDS_21.get(msg_id, "Unknown")
+    msg_type = MESSAGE_IDS_23.get(msg_id, "Unknown")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
     
-    message_handlers = {
-        "DATA_FRAME" : handle_data_frame
-    }
+    # message_handlers = {
+    #     "DATA_FRAME" : handle_data_frame
+    # }
+    # if handler := message_handlers.get(msg_type):
+    #     handler(self, message, timestamp)
     
-    if handler := message_handlers.get(msg_type):
-        handler(self, message, timestamp)
+    if msg_type == "DATA_FRAME":
+        handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
 
 def handle_charger_vit(self, message, timestamp):
     voltage = (message[5] << 8 | message[4])

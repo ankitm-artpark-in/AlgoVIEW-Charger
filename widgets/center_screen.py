@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QTableWidgetItem, QTableWidget, QVBoxLayout, QLabel, QPushButton, QHeaderView, QComboBox, QPushButton)
 from PySide6.QtGui import QFont
 
-from serial_utils.read_serial import read_serial_15, read_serial_21
+from serial_utils.read_serial import read_serial_15, read_serial_23
 from serial_utils.send_frame import send_battery_query
 from .connection_settings import ConnectionSettings
 
