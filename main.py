@@ -23,6 +23,21 @@ class SerialPortGUI(QWidget):
         # Buffer for saved data frames
         self.saved_data_buffers = {}  # key: buffer_name, value: list of dicts
 
+        # Table for displaying saved data info (moved to bottom, with timestamp and status)
+        from PySide6.QtWidgets import QTableWidget
+        self.saved_data_table = QTableWidget()
+        self.saved_data_table.setColumnCount(4)
+        self.saved_data_table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Timestamp", "Status"])
+        self.saved_data_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.saved_data_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.saved_data_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.saved_data_table.setFixedHeight(180)
+        # Stretch columns to fill width
+        header = self.saved_data_table.horizontalHeader()
+        for i in range(self.saved_data_table.columnCount()):
+            header.setSectionResizeMode(i, QHeaderView.Stretch)
+        self.saved_data_table.cellClicked.connect(self.handle_saved_data_table_click)
+
         default_font = QFont()
         default_font.setPointSize(11)
         self.setFont(default_font)
@@ -46,19 +61,19 @@ class SerialPortGUI(QWidget):
         self.charger_info_layout.addWidget(self.charger_fw_label, 1, 3)
         self.charger_info_box.setLayout(self.charger_info_layout)
         self.layout.addWidget(self.charger_info_box)
-
         self.connection_settings = ConnectionSettings(self)
         self.layout.addWidget(self.connection_settings)
-
         self.center_screen_widget = CenterScreen(self)
         self.layout.addWidget(self.center_screen_widget)
-
-        # Add a button to view saved data
+        # Add saved data table at the bottom
+        # Add import data button above the saved data table
         from PySide6.QtWidgets import QPushButton
-        self.view_saved_btn = QPushButton("View Saved Data")
-        self.view_saved_btn.clicked.connect(self.show_saved_data_dialog)
-        self.layout.addWidget(self.view_saved_btn)
-
+        self.import_btn = QPushButton("Import Data")
+        self.import_btn.clicked.connect(self.import_data_dialog)
+        self.layout.addWidget(self.import_btn)
+        
+        
+        self.layout.addWidget(self.saved_data_table)
         # Set the layout
         self.setLayout(self.layout)
 
@@ -66,6 +81,58 @@ class SerialPortGUI(QWidget):
         self.connection_settings.refresh_clicked.connect(self.refresh_ports)
         self.connection_settings.connect_clicked.connect(self.connect_port)
         self.connection_settings.disconnect_clicked.connect(self.disconnect_port)
+        
+    def import_data_dialog(self):
+        from PySide6.QtWidgets import QFileDialog, QInputDialog, QMessageBox, QTableWidgetItem
+        import pandas as pd
+        from datetime import datetime
+        # Ask for file
+        file_path, _ = QFileDialog.getOpenFileName(self, "Import Data File", "", "Data Files (*.csv *.xlsx)")
+        if not file_path:
+            return
+        # Read file
+        try:
+            if file_path.endswith('.csv'):
+                df = pd.read_csv(file_path)
+            else:
+                df = pd.read_excel(file_path)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to read file: {e}")
+            return
+        # Check columns
+        expected_cols = ["timestamp", "charge_voltage", "charge_current", "rel_time", "error_flags"]
+        if len(df.columns) != 5 or list(df.columns) != expected_cols:
+            QMessageBox.warning(self, "Invalid File", "Invalid file selected. File must have exactly 5 columns: timestamp, charge_voltage, charge_current, rel_time, error_flags.")
+            return
+        # Ask for battery id
+        bat_id, ok = QInputDialog.getText(self, "Battery ID", "Enter Battery ID for imported data:")
+        if not ok or not bat_id:
+            return
+        # Use cycle count as '--' for import
+        buffer_name = f"b_{bat_id}_c_--"
+        # Convert DataFrame to list of dicts
+        data_frames = df.to_dict(orient='records')
+        # Save in buffer
+        self.saved_data_buffers[buffer_name] = data_frames
+        # Add to table (cycle count as '--', status as 'IMPORTED')
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        found = False
+        for row in range(self.saved_data_table.rowCount()):
+            if (self.saved_data_table.item(row, 0) and self.saved_data_table.item(row, 0).text() == str(bat_id)
+                and self.saved_data_table.item(row, 1) and self.saved_data_table.item(row, 1).text() == "--"):
+                # Update timestamp and status if already present
+                self.saved_data_table.setItem(row, 2, QTableWidgetItem(timestamp))
+                self.saved_data_table.setItem(row, 3, QTableWidgetItem("IMPORTED"))
+                found = True
+                break
+        if not found:
+            row = self.saved_data_table.rowCount()
+            self.saved_data_table.insertRow(row)
+            self.saved_data_table.setItem(row, 0, QTableWidgetItem(str(bat_id)))
+            self.saved_data_table.setItem(row, 1, QTableWidgetItem("--"))
+            self.saved_data_table.setItem(row, 2, QTableWidgetItem(timestamp))
+            self.saved_data_table.setItem(row, 3, QTableWidgetItem("IMPORTED"))
+        self.show_data_view_dialog(buffer_name, data_frames)
 
     def update_charger_info(self, hw_version, product_id, serial_no, fw_major, fw_minor):
         self.charger_hw_label.setText(str(hw_version))
@@ -90,24 +157,56 @@ class SerialPortGUI(QWidget):
         read_serial(self.serial_obj, self.buffer, self, self.connection_settings)
 
     def save_data_buffer(self, buffer_name, data_frames):
-        """Save data in the GUI for later viewing."""
+        """Save data in the GUI for later viewing and update the saved data table."""
+        import re
+        from PySide6.QtWidgets import QTableWidgetItem
+        from datetime import datetime
         self.saved_data_buffers[buffer_name] = data_frames
+        # Parse battery id and cycle count from buffer_name
+        m = re.match(r"b_(.+)_c_(.+)", buffer_name)
+        if m:
+            bat_id, cycle_count = m.group(1), m.group(2)
+        else:
+            bat_id, cycle_count = buffer_name, "-"
+        # Timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Check if already present
+        found = False
+        for row in range(self.saved_data_table.rowCount()):
+            if (self.saved_data_table.item(row, 0) and self.saved_data_table.item(row, 0).text() == str(bat_id)
+                and self.saved_data_table.item(row, 1) and self.saved_data_table.item(row, 1).text() == str(cycle_count)):
+                # Update timestamp and status if already present
+                self.saved_data_table.setItem(row, 2, QTableWidgetItem(timestamp))
+                self.saved_data_table.setItem(row, 3, QTableWidgetItem("DOWNLOADED"))
+                found = True
+                break
+        if not found:
+            row = self.saved_data_table.rowCount()
+            self.saved_data_table.insertRow(row)
+            self.saved_data_table.setItem(row, 0, QTableWidgetItem(str(bat_id)))
+            self.saved_data_table.setItem(row, 1, QTableWidgetItem(str(cycle_count)))
+            self.saved_data_table.setItem(row, 2, QTableWidgetItem(timestamp))
+            self.saved_data_table.setItem(row, 3, QTableWidgetItem("DOWNLOADED"))
+        # Table is always shown now
+    def handle_saved_data_table_click(self, row, column):
+        """Show the data view dialog for the selected saved data."""
+        bat_id_item = self.saved_data_table.item(row, 0)
+        cycle_count_item = self.saved_data_table.item(row, 1)
+        if not bat_id_item or not cycle_count_item:
+            return
+        buffer_name = f"b_{bat_id_item.text()}_c_{cycle_count_item.text()}"
+        if buffer_name in self.saved_data_buffers:
+            self.show_data_view_dialog(buffer_name, self.saved_data_buffers[buffer_name])
+        else:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Not Found", f"No data found for {buffer_name}")
 
     def show_data_view_dialog(self, buffer_name, data_frames):
         from widgets.data_view_dialog import DataViewDialog
         dlg = DataViewDialog(self, buffer_name, data_frames)
         dlg.exec()
 
-    def show_saved_data_dialog(self):
-        from PySide6.QtWidgets import QInputDialog
-        if not self.saved_data_buffers:
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.information(self, "No Saved Data", "No data has been saved yet.")
-            return
-        keys = list(self.saved_data_buffers.keys())
-        key, ok = QInputDialog.getItem(self, "Select Data Buffer", "Choose a saved data set to view:", keys, 0, False)
-        if ok and key:
-            self.show_data_view_dialog(key, self.saved_data_buffers[key])
+    # Removed show_saved_data_dialog and its usages
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
