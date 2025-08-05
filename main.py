@@ -20,6 +20,9 @@ class SerialPortGUI(QWidget):
         self.buffer = bytearray()
         self.layout = QVBoxLayout()
 
+        # Buffer for saved data frames
+        self.saved_data_buffers = {}  # key: buffer_name, value: list of dicts
+
         default_font = QFont()
         default_font.setPointSize(11)
         self.setFont(default_font)
@@ -50,6 +53,12 @@ class SerialPortGUI(QWidget):
         self.center_screen_widget = CenterScreen(self)
         self.layout.addWidget(self.center_screen_widget)
 
+        # Add a button to view saved data
+        from PySide6.QtWidgets import QPushButton
+        self.view_saved_btn = QPushButton("View Saved Data")
+        self.view_saved_btn.clicked.connect(self.show_saved_data_dialog)
+        self.layout.addWidget(self.view_saved_btn)
+
         # Set the layout
         self.setLayout(self.layout)
 
@@ -79,6 +88,26 @@ class SerialPortGUI(QWidget):
 
     def read_serial_data(self):
         read_serial(self.serial_obj, self.buffer, self, self.connection_settings)
+
+    def save_data_buffer(self, buffer_name, data_frames):
+        """Save data in the GUI for later viewing."""
+        self.saved_data_buffers[buffer_name] = data_frames
+
+    def show_data_view_dialog(self, buffer_name, data_frames):
+        from widgets.data_view_dialog import DataViewDialog
+        dlg = DataViewDialog(self, buffer_name, data_frames)
+        dlg.exec()
+
+    def show_saved_data_dialog(self):
+        from PySide6.QtWidgets import QInputDialog
+        if not self.saved_data_buffers:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "No Saved Data", "No data has been saved yet.")
+            return
+        keys = list(self.saved_data_buffers.keys())
+        key, ok = QInputDialog.getItem(self, "Select Data Buffer", "Choose a saved data set to view:", keys, 0, False)
+        if ok and key:
+            self.show_data_view_dialog(key, self.saved_data_buffers[key])
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

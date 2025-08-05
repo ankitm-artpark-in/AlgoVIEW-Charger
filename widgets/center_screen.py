@@ -78,8 +78,19 @@ class CenterScreen(QWidget):
                         getattr(self.main_window, 'serial_obj', None),
                         self.main_window.buffer,
                         self.main_window,
-                        self.main_window.connection_settings
+                        self.main_window.connection_settings,
+                        battery_ids=bid,
+                        cycle_counts=combo.currentText() if combo.currentText().isdigit() else 0
                     )
+
+                    # After reading, try to show the dialog if data is available
+                    buffer_name = f"b_{bid}_c_{combo.currentText()}"
+                    data_frames = getattr(self.main_window, 'data_frames_buffer', {}).get(buffer_name, [])
+                    if data_frames:
+                        self.main_window.show_data_view_dialog(buffer_name, data_frames)
+                    else:
+                        from PySide6.QtWidgets import QMessageBox
+                        QMessageBox.information(self, "No Data", "No data received for this battery/cycle yet.")
                 return handler
 
             send_btn.clicked.connect(make_send_handler(bat_id, cycle_count_combo))

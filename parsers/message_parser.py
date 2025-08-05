@@ -11,13 +11,14 @@ MESSAGE_IDS_15 = {
     (0xB2, 0xDE): "DEBUG_MESSAGE_2",
     
     (0x06, 0x5D): "DISPLAY_DATA",
+    (0x01, 0x5D): "DATA_FRAME",
 }
 
 MESSAGE_IDS_21 = {
     (0x05, 0x5D): "DATA_FRAME",
 }
 
-def process_message_15(self, message):
+def process_message_15(self, message, battery_ids=None, cycle_counts=None):
     hex_data = ' '.join([f'{b:02X}' for b in message])
     msg_id = (message[2], message[3])
     msg_type = MESSAGE_IDS_15.get(msg_id, "Unknown")
@@ -34,10 +35,14 @@ def process_message_15(self, message):
         "DEBUG_MESSAGE_2": handle_debug_message_2,
 
         "DISPLAY_DATA": handle_display_data,
+        # "DATA_FRAME": handle_data_frame,
     }
 
     if handler := message_handlers.get(msg_type):
         handler(self, message, timestamp)
+        
+    if msg_type == "DATA_FRAME":
+        handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
         
 def process_message_21(self, message):
     hex_data = ' '.join([f'{b:02X}' for b in message])
@@ -124,10 +129,10 @@ def handle_data_frame(self, message, timestamp, battery_id, cycle_counts):
     charge_current = (message[7] << 8 | message[6])
     rel_time = (message[9] << 8 | message[8])
     error_flags = (message[11] << 8 | message[10])
-    set_c_rate_1 = (message[13] << 8 | message[12])
-    set_c_rate_2 = (message[15] << 8 | message[14])
-    max_volta_temp = (message[17] << 8 | message[16])
-    avg_volta_temp = (message[19] << 8 | message[18])
+    # set_c_rate_1 = (message[13] << 8 | message[12])
+    # set_c_rate_2 = (message[15] << 8 | message[14])
+    # max_volta_temp = (message[17] << 8 | message[16])
+    # avg_volta_temp = (message[19] << 8 | message[18])
     
     buffer_name = f'b_{battery_id}_c_{cycle_counts}'
     
@@ -144,10 +149,10 @@ def handle_data_frame(self, message, timestamp, battery_id, cycle_counts):
             "charge_current": charge_current,
             "rel_time": rel_time,
             "error_flags": error_flags,
-            "set_c_rate_1": set_c_rate_1,
-            "set_c_rate_2": set_c_rate_2,
-            "max_volta_temp": max_volta_temp,
-            "avg_volta_temp": avg_volta_temp,
+            # "set_c_rate_1": set_c_rate_1,
+            # "set_c_rate_2": set_c_rate_2,
+            # "max_volta_temp": max_volta_temp,
+            # "avg_volta_temp": avg_volta_temp,
             
         }
     )
