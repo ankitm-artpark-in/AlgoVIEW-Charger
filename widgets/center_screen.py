@@ -65,15 +65,24 @@ class CenterScreen(QWidget):
             # Send Query button for this row
             send_btn = QPushButton("Download Data")
             
+
             def make_send_handler(bid, combo):
                 def handler():
+                    buffer_name = f"b_{bid}_c_{combo.currentText()}"
+                    # Clear the buffer for this battery/cycle before starting a new download
+                    if hasattr(self.main_window, 'data_frames_buffer'):
+                        self.main_window.data_frames_buffer[buffer_name] = []
+                    # Clear the main buffer to avoid old data being included
+                    if hasattr(self.main_window, 'buffer'):
+                        self.main_window.buffer.clear()
+
                     send_battery_query(
                         getattr(self.main_window, 'serial_obj', None),
                         self,
                         bid,
                         combo.currentText() if combo.currentText().isdigit() else 0
                     )
-                    
+
                     read_serial_15(
                         getattr(self.main_window, 'serial_obj', None),
                         self.main_window.buffer,
@@ -84,7 +93,6 @@ class CenterScreen(QWidget):
                     )
 
                     # After reading, try to show the dialog if data is available
-                    buffer_name = f"b_{bid}_c_{combo.currentText()}"
                     data_frames = getattr(self.main_window, 'data_frames_buffer', {}).get(buffer_name, [])
                     if data_frames:
                         self.main_window.show_data_view_dialog(buffer_name, data_frames)
