@@ -20,6 +20,7 @@ class DataViewDialog(QDialog):
         left_widget = QWidget()
         left_layout = QVBoxLayout()
         self.table = QTableWidget()
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         if self.data_frames:
             headers = list(self.data_frames[0].keys())
             self.table.setColumnCount(len(headers))

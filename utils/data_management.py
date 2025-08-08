@@ -15,10 +15,17 @@ def import_data_dialog(self):
     except Exception as e:
         QMessageBox.warning(self, "Error", f"Failed to read file: {e}")
         return
-    expected_cols = ["timestamp", "charge_voltage", "charge_current", "rel_time", "error_flags"]
-    if len(df.columns) != 5 or list(df.columns) != expected_cols:
-        QMessageBox.warning(self, "Invalid File", "Invalid file selected. File must have exactly 5 columns: timestamp, charge_voltage, charge_current, rel_time, error_flags.")
-        return
+    # Required columns for plotting and display
+    required_cols = [
+        'rel_time', 'charge_voltage', 'charge_current', 'error_flags',
+        'set_c_rate1', 'set_c_rate2', 'max_volta_temp', 'avg_volta_temp'
+    ]
+    # Add missing columns as '--'
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = '--'
+    # Reorder columns for consistency
+    df = df[required_cols]
     bat_id, ok = QInputDialog.getText(self, "Battery ID", "Enter Battery ID for imported data:")
     if not ok or not bat_id:
         return
