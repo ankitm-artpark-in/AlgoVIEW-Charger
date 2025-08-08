@@ -45,14 +45,20 @@ class DataViewDialog(QDialog):
         self.x_label = QLabel("X axis:")
         self.x_combo = QComboBox()
         self.y_label = QLabel("Y axis:")
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QLineEdit, QFormLayout, QGroupBox
         self.y_list = QListWidget()
         self.y_list.setMaximumHeight(120)
+        # Add scale factor inputs for each Y column
+        self.scale_inputs = {}  # key: column name, value: QLineEdit
+        self.scale_group = QGroupBox("Y Column Scale Factors")
+        self.scale_form = QFormLayout()
+        self.scale_group.setLayout(self.scale_form)
         self.plot_btn = QPushButton("Plot")
         controls_layout.addWidget(self.x_label)
         controls_layout.addWidget(self.x_combo)
         controls_layout.addWidget(self.y_label)
         controls_layout.addWidget(self.y_list)
+        controls_layout.addWidget(self.scale_group)
         controls_layout.addWidget(self.plot_btn)
         right_layout.addLayout(controls_layout)
         # Plot area (bottom)
@@ -80,6 +86,12 @@ class DataViewDialog(QDialog):
                 item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
                 item.setCheckState(Qt.Unchecked)
                 self.y_list.addItem(item)
+                # Add scale input for each Y column
+                scale_input = QLineEdit()
+                scale_input.setPlaceholderText("Scale (default 1.0)")
+                scale_input.setText("1.0")
+                self.scale_inputs[h] = scale_input
+                self.scale_form.addRow(h, scale_input)
 
         self.save_btn.clicked.connect(self.save_in_gui)
         self.export_btn.clicked.connect(self.export_excel)
@@ -104,8 +116,14 @@ class DataViewDialog(QDialog):
             ]
             for idx, y_col in enumerate(checked_y_items):
                 y = df[y_col]
+                # Get scale factor from input, default to 1.0 if invalid
+                try:
+                    scale = float(self.scale_inputs[y_col].text())
+                except Exception:
+                    scale = 1.0
+                y_scaled = y * scale
                 color = colors[idx % len(colors)]
-                ax.plot(x, y, marker='o', label=y_col, color=color)
+                ax.plot(x, y_scaled, marker='o', label=f"{y_col} (x{scale})" if scale != 1.0 else y_col, color=color)
             ax.set_xlabel(x_col)
             ax.set_ylabel("Y")
             ax.set_title(f"Multiple Y vs {x_col}")
