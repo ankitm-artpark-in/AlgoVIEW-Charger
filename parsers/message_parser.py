@@ -1,7 +1,7 @@
 from datetime import datetime
 from PySide6.QtWidgets import QMessageBox
 
-MESSAGE_IDS_15 = {
+MESSAGE_IDS = {
     (0x01, 0xA1): "CHARGER_VIT",
     (0x03, 0xC1): "CHARGER_INT_TEMP_DATA",
     (0x01, 0xB0): "CHARGER_Brick_A",
@@ -11,17 +11,13 @@ MESSAGE_IDS_15 = {
     (0xB2, 0xDE): "DEBUG_MESSAGE_2",
     
     (0x06, 0x5D): "DISPLAY_DATA",
-    (0x01, 0x5D): "DATA_FRAME",
-}
-
-MESSAGE_IDS_23 = {
     (0x05, 0x5D): "DATA_FRAME",
 }
 
-def process_message_15(self, message, battery_ids=None, cycle_counts=None):
+def process_message(self, message, battery_ids=None, cycle_counts=None):
     hex_data = ' '.join([f'{b:02X}' for b in message])
     msg_id = (message[2], message[3])
-    msg_type = MESSAGE_IDS_15.get(msg_id, "Unknown")
+    msg_type = MESSAGE_IDS.get(msg_id, "Unknown")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
 
@@ -35,7 +31,6 @@ def process_message_15(self, message, battery_ids=None, cycle_counts=None):
         "DEBUG_MESSAGE_2": handle_debug_message_2,
 
         "DISPLAY_DATA": handle_display_data,
-        # "DATA_FRAME": handle_data_frame,
     }
 
     if handler := message_handlers.get(msg_type):
@@ -43,22 +38,68 @@ def process_message_15(self, message, battery_ids=None, cycle_counts=None):
         
     if msg_type == "DATA_FRAME":
         handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
+
+
+# frame23 = False
+
+# MESSAGE_IDS_15 = {
+#     (0x01, 0xA1): "CHARGER_VIT",
+#     (0x03, 0xC1): "CHARGER_INT_TEMP_DATA",
+#     (0x01, 0xB0): "CHARGER_Brick_A",
+#     (0x02, 0xB0): "CHARGER_Brick_B",
+#     (0x07, 0xE0): "CHARGER_INFO",
+#     (0xB1, 0xDE): "DEBUG_MESSAGE_1",
+#     (0xB2, 0xDE): "DEBUG_MESSAGE_2",
+    
+#     (0x06, 0x5D): "DISPLAY_DATA",
+#     (0x01, 0x5D): "DATA_FRAME",
+# }
+
+# MESSAGE_IDS_23 = {
+#     (0x05, 0x5D): "DATA_FRAME",
+# }
+
+# def process_message_15(self, message, battery_ids=None, cycle_counts=None):
+#     hex_data = ' '.join([f'{b:02X}' for b in message])
+#     msg_id = (message[2], message[3])
+#     msg_type = MESSAGE_IDS_15.get(msg_id, "Unknown")
+#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+#     print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
+
+#     message_handlers = {
+#         "CHARGER_VIT": handle_charger_vit,
+#         "CHARGER_INT_TEMP_DATA": handle_charger_int_temp_data,
+#         "CHARGER_Brick_A": handle_charger_brick_a,
+#         "CHARGER_Brick_B": handle_charger_brick_b,
+#         "CHARGER_INFO": handle_charger_info,
+#         "DEBUG_MESSAGE_1": handle_debug_message_1,
+#         "DEBUG_MESSAGE_2": handle_debug_message_2,
+
+#         "DISPLAY_DATA": handle_display_data,
+#         # "DATA_FRAME": handle_data_frame,
+#     }
+
+#     if handler := message_handlers.get(msg_type):
+#         handler(self, message, timestamp)
+#     if frame23 != True:    
+#         if msg_type == "DATA_FRAME":
+#             handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
         
-def process_message_23(self, message, battery_ids=None, cycle_counts=None):
-    hex_data = ' '.join([f'{b:02X}' for b in message])
-    msg_id = (message[2], message[3])
-    msg_type = MESSAGE_IDS_23.get(msg_id, "Unknown")
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-    print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
+# def process_message_23(self, message, battery_ids=None, cycle_counts=None):
+#     hex_data = ' '.join([f'{b:02X}' for b in message])
+#     msg_id = (message[2], message[3])
+#     msg_type = MESSAGE_IDS_23.get(msg_id, "Unknown")
+#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+#     print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
     
-    # message_handlers = {
-    #     "DATA_FRAME" : handle_data_frame
-    # }
-    # if handler := message_handlers.get(msg_type):
-    #     handler(self, message, timestamp)
+#     # message_handlers = {
+#     #     "DATA_FRAME" : handle_data_frame
+#     # }
+#     # if handler := message_handlers.get(msg_type):
+#     #     handler(self, message, timestamp)
     
-    if msg_type == "DATA_FRAME":
-        handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
+#     if msg_type == "DATA_FRAME":
+#        handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
 
 def handle_charger_vit(self, message, timestamp):
     voltage = (message[5] << 8 | message[4])
@@ -127,14 +168,14 @@ def handle_display_data(self, message, timestamp):
         self.center_screen_widget.refresh_table()
     
 def handle_data_frame(self, message, timestamp, battery_id, cycle_counts):
-    charge_voltage = (message[5] << 8 | message[4])
-    charge_current = (message[7] << 8 | message[6])
-    rel_time = (message[9] << 8 | message[8])
+    rel_time = (message[5] << 8 | message[4])
+    charge_voltage = (message[7] << 8 | message[6])
+    charge_current = (message[9] << 8 | message[8])
     error_flags = (message[11] << 8 | message[10])
-    # set_c_rate_1 = (message[13] << 8 | message[12])
-    # set_c_rate_2 = (message[15] << 8 | message[14])
-    # max_volta_temp = (message[17] << 8 | message[16])
-    # avg_volta_temp = (message[19] << 8 | message[18])
+    set_c_rate_1 = (message[13] << 8 | message[12])
+    set_c_rate_2 = (message[15] << 8 | message[14])
+    max_volta_temp = (message[17] << 8 | message[16])
+    avg_volta_temp = (message[19] << 8 | message[18])
     
     buffer_name = f'b_{battery_id}_c_{cycle_counts}'
     
@@ -142,7 +183,7 @@ def handle_data_frame(self, message, timestamp, battery_id, cycle_counts):
         self.data_frames_buffer = {}
         
     if buffer_name not in self.data_frames_buffer:
-        self.data_frames_buffer[buffer_name] = []
+        self.data_frames_buffer[buffer_name] = []   
         
     self.data_frames_buffer[buffer_name].append(
         {
@@ -151,10 +192,10 @@ def handle_data_frame(self, message, timestamp, battery_id, cycle_counts):
             "charge_current": charge_current,
             "rel_time": rel_time,
             "error_flags": error_flags,
-            # "set_c_rate_1": set_c_rate_1,
-            # "set_c_rate_2": set_c_rate_2,
-            # "max_volta_temp": max_volta_temp,
-            # "avg_volta_temp": avg_volta_temp,
+            "set_c_rate_1": set_c_rate_1,
+            "set_c_rate_2": set_c_rate_2,
+            "max_volta_temp": max_volta_temp,
+            "avg_volta_temp": avg_volta_temp,
             
         }
     )

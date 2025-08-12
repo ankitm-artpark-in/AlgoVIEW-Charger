@@ -6,8 +6,6 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFont
 from widgets.serial_port_gui import SerialPortGUI
 
-
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     default_font = QFont()
