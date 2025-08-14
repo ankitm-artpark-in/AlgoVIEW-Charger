@@ -129,7 +129,7 @@ class DataViewDialog(QDialog):
         right_layout.addWidget(controls_widget)
         
         # Plot area (bottom) - Now gets more space
-        self.figure = Figure(figsize=(8, 6))
+        self.figure = Figure(figsize=(12, 8))
         self.canvas = FigureCanvas(self.figure)
         right_layout.addWidget(self.canvas)
         
