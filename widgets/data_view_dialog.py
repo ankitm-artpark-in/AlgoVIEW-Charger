@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QTableWidget, QTableWidgetI
                              QScrollArea, QCheckBox, QSpinBox, QDoubleSpinBox)
 from PySide6.QtCore import Qt
 import pandas as pd
+import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT
 from matplotlib.figure import Figure
 
@@ -15,6 +16,12 @@ class DataViewDialog(QDialog):
         self.resize(1000, 600)  # Increased width for better layout
         self.buffer_name = buffer_name
         self.data_frames = data_frames
+        
+        # Initialize hover-related attributes
+        self.hover_annotation = None
+        self.plotted_lines = {}  # Store line objects with their data
+        self.df = None  # Store the DataFrame for hover data access
+        
         self.init_ui()
 
     def init_ui(self):
@@ -129,7 +136,7 @@ class DataViewDialog(QDialog):
         right_layout.addWidget(controls_widget)
         
         # Plot area (bottom) - Now gets more space
-        self.figure = Figure(figsize=(12, 8))
+        self.figure = Figure(figsize=(16, 12))
         self.canvas = FigureCanvas(self.figure)
         right_layout.addWidget(self.canvas)
         
@@ -149,8 +156,8 @@ class DataViewDialog(QDialog):
         self.scale_inputs = {}
         
         if self.data_frames:
-            df = pd.DataFrame(self.data_frames)
-            headers = list(df.columns)
+            self.df = pd.DataFrame(self.data_frames)
+            headers = list(self.df.columns)
             self.x_combo.addItems(headers)
             
             for h in headers:
@@ -178,7 +185,7 @@ class DataViewDialog(QDialog):
             QMessageBox.warning(self, "No Data", "No data to plot.")
             return
             
-        df = pd.DataFrame(self.data_frames)
+        self.df = pd.DataFrame(self.data_frames)
         x_col = self.x_combo.currentText()
         
         # Get checked Y columns
@@ -190,7 +197,7 @@ class DataViewDialog(QDialog):
             return
             
         try:
-            x = df[x_col]
+            x = self.df[x_col]
             self.figure.clear()
             ax = self.figure.add_subplot(111)
             
@@ -199,14 +206,31 @@ class DataViewDialog(QDialog):
                 '#e377c2', '#8c564b', '#9467bd', '#2ca02c', '#d62728', '#ff7f0e', '#1f77b4'
             ]
             
+            # Clear previous plot data
+            self.plotted_lines.clear()
+            
             for idx, y_col in enumerate(checked_y_cols):
-                y = df[y_col]
+                y = self.df[y_col]
                 # Get scale factor from spinbox
                 scale = self.scale_inputs[y_col].value()
                 y_scaled = y * scale
                 color = colors[idx % len(colors)]
-                label = f"{y_col} (×{scale})" if scale != 1.0 else y_col
-                ax.plot(x, y_scaled, marker='o', label=label, color=color, linewidth=2, markersize=4)
+                label = f"{y_col}" if scale != 1.0 else y_col
+                
+                # Plot the line and store reference with data
+                line, = ax.plot(x, y_scaled, marker='o', label=label, color=color, 
+                              linewidth=2, markersize=4)
+                
+                # Store line data for hover functionality
+                self.plotted_lines[line] = {
+                    'x_col': x_col,
+                    'y_col': y_col,
+                    'x_data': x.values,
+                    'y_data': y.values,
+                    'y_scaled': y_scaled.values,
+                    'scale': scale,
+                    'color': color
+                }
                 
             ax.set_xlabel(x_col)
             ax.set_ylabel("Y")
@@ -214,10 +238,113 @@ class DataViewDialog(QDialog):
             ax.grid(True, alpha=0.3)
             ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
             self.figure.tight_layout()
+            
+            # Connect hover event
+            self.canvas.mpl_connect('motion_notify_event', self.on_hover)
             self.canvas.draw()
             
         except Exception as e:
             QMessageBox.warning(self, "Plot Error", f"Failed to plot: {e}")
+
+    def on_hover(self, event):
+        """Handle mouse hover events on the plot"""
+        if event.inaxes is None:
+            return
+            
+        # Remove previous annotation if it exists
+        if self.hover_annotation:
+            self.hover_annotation.remove()
+            self.hover_annotation = None
+            
+        # Find the closest data point across all plotted lines
+        closest_point = None
+        min_distance = float('inf')
+        closest_line_info = None
+        
+        for line, line_data in self.plotted_lines.items():
+            # Get the line's data
+            x_data = line_data['x_data']
+            y_data = line_data['y_scaled']
+            
+            # Convert data coordinates to display coordinates
+            try:
+                # Transform data points to display coordinates
+                points = np.column_stack([x_data, y_data])
+                transformed_points = event.inaxes.transData.transform(points)
+                
+                # Calculate distances from mouse position to all points
+                mouse_pos = np.array([event.x, event.y])
+                distances = np.sqrt(np.sum((transformed_points - mouse_pos)**2, axis=1))
+                
+                # Find the closest point on this line
+                min_idx = np.argmin(distances)
+                min_dist = distances[min_idx]
+                
+                # Check if this is the globally closest point
+                if min_dist < min_distance and min_dist < 20:  # 20 pixel threshold
+                    min_distance = min_dist
+                    closest_point = {
+                        'idx': min_idx,
+                        'x': x_data[min_idx],
+                        'y': y_data[min_idx],
+                        'original_y': line_data['y_data'][min_idx]
+                    }
+                    closest_line_info = line_data
+                    
+            except Exception:
+                continue
+                
+        # If we found a close point, show tooltip
+        if closest_point and closest_line_info:
+            self.show_hover_tooltip(event, closest_point, closest_line_info)
+            self.canvas.draw_idle()
+    
+    def show_hover_tooltip(self, event, point, line_info):
+        """Show tooltip with point information"""
+        ax = event.inaxes
+        
+        # Create tooltip text with all relevant information
+        x_val = point['x']
+        y_val = point['original_y']  # Original unscaled value
+        y_scaled = point['y']  # Scaled value for display
+        
+        # Get all data for this point index
+        row_data = self.df.iloc[point['idx']]
+        
+        # Create comprehensive tooltip
+        tooltip_lines = [
+            f"{line_info['x_col']}: {x_val}",
+            f"{line_info['y_col']}: {y_val}"
+        ]
+        
+        if line_info['scale'] != 1.0:
+            tooltip_lines.append(f"Scaled: {y_scaled:.3f}")
+            
+        # Add other relevant columns from the same row
+        important_cols = ['rel_time', 'charge_voltage', 'charge_current', 'error_flags',
+                         'set_c_rate1', 'set_c_rate2', 'max_volta_temp', 'avg_volta_temp']
+        
+        for col in important_cols:
+            if col in row_data and col not in [line_info['x_col'], line_info['y_col']]:
+                value = row_data[col]
+                if pd.notna(value) and str(value) != '--':
+                    tooltip_lines.append(f"{col}: {value}")
+        
+        tooltip_text = '\n'.join(tooltip_lines)
+        
+        # Create annotation
+        self.hover_annotation = ax.annotate(
+            tooltip_text,
+            xy=(x_val, y_scaled),
+            xytext=(10, 10),
+            textcoords='offset points',
+            bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.9, edgecolor='black'),
+            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0', color='black'),
+            fontsize=9,
+            ha='left',
+            va='bottom',
+            zorder=1000  # Ensure tooltip appears on top
+        )
 
     def save_in_gui(self):
         # Inform parent to save this data
