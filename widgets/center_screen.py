@@ -133,6 +133,7 @@ class CenterScreen(QWidget):
 
         # Refresh recent data table (same format as saved logs)
         recent_battery_ids = getattr(self.main_window, 'recent_battery_ids', [])
+        cycle_counts = getattr(self.main_window, 'cycle_counts', {})
         
         self.recent_table.setRowCount(len(recent_battery_ids))
         self.recent_table.setColumnCount(3)
@@ -141,9 +142,14 @@ class CenterScreen(QWidget):
         for row, bat_id in enumerate(recent_battery_ids):
             self.recent_table.setItem(row, 0, QTableWidgetItem(str(bat_id)))
             
-            # Cycle count dropdown for recent data (default to 1 since no cycle count from first case)
+            # Cycle count dropdown for recent data - check if cycle count is available
             recent_cycle_combo = QComboBox()
-            recent_cycle_combo.addItem("1")  # Default cycle count for recent data
+            cyclecount = cycle_counts.get(bat_id)
+            if cyclecount is not None and isinstance(cyclecount, int) and cyclecount > 0:
+                for i in range(1, cyclecount + 1):
+                    recent_cycle_combo.addItem(str(i))
+            else:
+                recent_cycle_combo.addItem("1")  # Default cycle count for recent data
             self.recent_table.setCellWidget(row, 1, recent_cycle_combo)
             
             # Send Query button for recent data
@@ -185,4 +191,4 @@ class CenterScreen(QWidget):
                 return handler
 
             recent_send_btn.clicked.connect(make_recent_send_handler(bat_id, recent_cycle_combo))
-            self.recent_table.setCellWidget(row, 2, recent_send_btn)    
+            self.recent_table.setCellWidget(row, 2, recent_send_btn)
