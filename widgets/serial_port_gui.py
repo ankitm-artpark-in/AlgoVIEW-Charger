@@ -12,7 +12,7 @@ class SerialPortGUI(QWidget):
         self.layout = QVBoxLayout()
 
         # Buffer for saved data frames
-        self.saved_data_buffers = {}  # key: buffer_name, value: list of dicts
+        self.saved_data_buffers = {}
 
         # Table for displaying saved data info (moved to bottom, with timestamp and status)
         self.saved_data_table = QTableWidget()

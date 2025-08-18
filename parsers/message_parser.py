@@ -151,22 +151,24 @@ def handle_debug_message_2(self, message, timestamp):
     charger_error_flag = message[10]
     
 def handle_display_data(self, message, timestamp):
+    # Case 1: Recent data (live/current battery IDs)
     if (message[4] == 0x00 and message[5] == 0x00 and message[6] == 0x00 and message[7] == 0x00):
         battery_id = (message[10] << 8 | message[9])
-        if not hasattr(self, "battery_ids"):
-            self.battery_ids = []
-        if battery_id not in self.battery_ids:
-            self.battery_ids.append(battery_id)
+        if not hasattr(self, "recent_battery_ids"):
+            self.recent_battery_ids = []
+        if battery_id not in self.recent_battery_ids:
+            self.recent_battery_ids.append(battery_id)
         self.center_screen_widget.refresh_table()
 
+    # Case 2: All data (stored/logged battery IDs with cycle counts)
     if (message[9] == 0x00 and message[10] == 0x00):
         bat_id = (message[5] << 8 | message[4])
         cycle_count = (message[7] << 8 | message[6])
-        if not hasattr(self, "battery_ids"):
-            self.battery_ids = []
+        if not hasattr(self, "all_battery_ids"):
+            self.all_battery_ids = []
 
-        if bat_id not in self.battery_ids:
-            self.battery_ids.append(bat_id)
+        if bat_id not in self.all_battery_ids:
+            self.all_battery_ids.append(bat_id)
         
         if not hasattr(self, 'cycle_counts'):
             self.cycle_counts = {}
