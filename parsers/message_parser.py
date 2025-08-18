@@ -162,8 +162,15 @@ def handle_display_data(self, message, timestamp):
     if (message[9] == 0x00 and message[10] == 0x00):
         bat_id = (message[5] << 8 | message[4])
         cycle_count = (message[7] << 8 | message[6])
+        if not hasattr(self, "battery_ids"):
+            self.battery_ids = []
+
+        if bat_id not in self.battery_ids:
+            self.battery_ids.append(bat_id)
+        
         if not hasattr(self, 'cycle_counts'):
             self.cycle_counts = {}
+
         self.cycle_counts[bat_id] = cycle_count
         self.center_screen_widget.refresh_table()
     
