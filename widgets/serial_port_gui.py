@@ -1,5 +1,7 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QGridLayout, QLabel, QHeaderView, QPushButton, QTableWidget, QTableWidgetItem
-from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QGridLayout, QLabel, QHeaderView, QPushButton, QTableWidget, QTableWidgetItem, QHBoxLayout
+from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtCore import Qt
+import os
 from widgets import ConnectionSettings, CenterScreen
 from utils.data_management import import_data_dialog, save_data_buffer
 
@@ -31,8 +33,40 @@ class SerialPortGUI(QWidget):
         default_font.setPointSize(11)
         self.setFont(default_font)
 
-        # Charger Info Section
+        # Charger Info Section with Image
         self.charger_info_box = QGroupBox("Charger Info")
+        self.charger_info_main_layout = QHBoxLayout()
+        
+        # Image label
+        self.charger_image_label = QLabel()
+        self.charger_image_label.setFixedSize(80, 80)  # Set a fixed size for the image
+        self.charger_image_label.setScaledContents(True)  # Scale image to fit
+        self.charger_image_label.setAlignment(Qt.AlignCenter)
+        
+        # Try to load an image, fallback to placeholder text if not found
+        try:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            logo_path = os.path.join(os.path.dirname(current_dir), 'assets', 'logo1.png')
+            pixmap = QPixmap(logo_path)  # Replace with your image path
+            if not pixmap.isNull():
+                self.charger_image_label.setPixmap(pixmap)
+            else:
+                raise FileNotFoundError
+        except:
+            # Fallback - create a simple placeholder
+            self.charger_image_label.setStyleSheet("""
+                QLabel {
+                    background-color: #e0e0e0;
+                    border: 2px solid #c0c0c0;
+                    border-radius: 5px;
+                    color: #666;
+                    font-size: 10px;
+                }
+            """)
+            self.charger_image_label.setText("Charger\nIcon")
+            self.charger_image_label.setAlignment(Qt.AlignCenter)
+        
+        # Info grid layout
         self.charger_info_layout = QGridLayout()
         self.charger_hw_label = QLabel("-")
         self.charger_product_id_label = QLabel("-")
@@ -46,8 +80,18 @@ class SerialPortGUI(QWidget):
         self.charger_info_layout.addWidget(self.charger_serial_label, 1, 1)
         self.charger_info_layout.addWidget(QLabel("FW Version:"), 1, 2)
         self.charger_info_layout.addWidget(self.charger_fw_label, 1, 3)
-        self.charger_info_box.setLayout(self.charger_info_layout)
+        
+        # Create a widget to hold the grid layout
+        charger_info_widget = QWidget()
+        charger_info_widget.setLayout(self.charger_info_layout)
+        
+        # Add image and info to the main horizontal layout
+        self.charger_info_main_layout.addWidget(self.charger_image_label)
+        self.charger_info_main_layout.addWidget(charger_info_widget, 1)  # Stretch factor 1 for info
+        
+        self.charger_info_box.setLayout(self.charger_info_main_layout)
         self.layout.addWidget(self.charger_info_box)
+        
         self.connection_settings = ConnectionSettings(self)
         self.layout.addWidget(self.connection_settings)
         self.center_screen_widget = CenterScreen(self)
@@ -67,6 +111,18 @@ class SerialPortGUI(QWidget):
         self.charger_product_id_label.setText(str(product_id))
         self.charger_serial_label.setText(str(serial_no))
         self.charger_fw_label.setText(f"{fw_major}.{fw_minor}")
+
+    def update_charger_image(self, image_path):
+        """Method to update the charger image"""
+        try:
+            pixmap = QPixmap(image_path)
+            if not pixmap.isNull():
+                self.charger_image_label.setPixmap(pixmap)
+                self.charger_image_label.setStyleSheet("")  # Clear placeholder style
+            else:
+                raise FileNotFoundError
+        except:
+            print(f"Could not load image from {image_path}")
 
     def refresh_ports(self):
         from serial_utils import refresh_ports
