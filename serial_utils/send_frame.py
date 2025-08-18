@@ -4,9 +4,9 @@ from PySide6.QtGui import QPainter
 from .send_raw_msg import send_raw_msg
 
 class LoadingDialog(QDialog):
-    def __init__(self, parent=None, message="Loading..."):
+    def __init__(self, parent=None, message="Loading...", window_title="Loading", close_timer_ms=5000):
         super().__init__(parent)
-        self.setWindowTitle("Loading")
+        self.setWindowTitle(window_title)
         self.setFixedSize(150, 100)
         self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
         self.setModal(True)
@@ -35,11 +35,11 @@ class LoadingDialog(QDialog):
         self.rotation_timer.timeout.connect(self.rotate_loading)
         self.rotation_timer.start(50)  # Update every 50ms for smooth animation
         
-        # Timer to close dialog after 5 seconds
+        # Timer to close dialog after specified time
         self.close_timer = QTimer()
         self.close_timer.timeout.connect(self.accept)
         self.close_timer.setSingleShot(True)
-        self.close_timer.start(5000)  # 5 seconds
+        self.close_timer.start(close_timer_ms)
     
     def rotate_loading(self):
         self.rotation_angle = (self.rotation_angle + 10) % 360
@@ -81,9 +81,8 @@ class LoadingDialog(QDialog):
         self.close_timer.stop()
         super().closeEvent(event)
 
-def show_loading_dialog(parent_widget, message="Command sent successfully"):
-    """Show a loading dialog for 5 seconds"""
-    dialog = LoadingDialog(parent_widget, message)
+def show_loading_dialog(parent_widget, message="Command sent successfully", window_title="Loading", close_timer_ms=5000):
+    dialog = LoadingDialog(parent_widget, message, window_title, close_timer_ms)
     dialog.exec()
 
 def send_frame(serial_obj, command, parent_widget):
@@ -116,7 +115,7 @@ def send_frame(serial_obj, command, parent_widget):
             print(f"Sent command: {command} and msg: {' '.join(f'{b:02X}' for b in msg)}")
             
             # Show loading dialog instead of QMessageBox
-            show_loading_dialog(parent_widget, "Command sent successfully")
+            show_loading_dialog(parent_widget, "Please Wait", "Getting File Structure", 3000)
             
         except Exception as e:
             QMessageBox.critical(parent_widget, "Error", f"Error during sending command: {e}")
@@ -140,7 +139,7 @@ def send_battery_query(serial_obj, parent_widget, battery_id, cycle_count):
             print(f"Sent battery query: {' '.join(f'{b:02X}' for b in msg)}")
             
             # Show loading dialog instead of QMessageBox
-            show_loading_dialog(parent_widget, "Battery query sent successfully")
+            show_loading_dialog(parent_widget, "Please Wait", "Download file", 15000)
             
         except Exception as e:
             QMessageBox.critical(parent_widget, "Error", f"Error during sending battery query: {e}")
