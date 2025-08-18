@@ -6,7 +6,6 @@ from serial_utils.read_serial import read_serial
 from .send_frame import send_frame
 
 def connect_serial(dropdown, connection_settings, parent_widget):
-    # sourcery skip: extract-duplicate-method, extract-method
     if port := dropdown.currentText():
         try:
             ser = serial.Serial(port, baudrate=115200, timeout=1)

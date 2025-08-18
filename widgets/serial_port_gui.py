@@ -2,7 +2,9 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QGridLayout, QLab
 from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtCore import Qt
 import os
-from widgets import ConnectionSettings, CenterScreen
+
+from serial_utils import refresh_ports, connect_serial, disconnect_serial, read_serial
+from widgets import ConnectionSettings, CenterScreen, DataViewDialog
 from utils.data_management import import_data_dialog, save_data_buffer
 
 class SerialPortGUI(QWidget):
@@ -16,7 +18,7 @@ class SerialPortGUI(QWidget):
         # Buffer for saved data frames
         self.saved_data_buffers = {}
 
-        # Table for displaying saved data info (moved to bottom, with timestamp and status)
+        # Table for displaying saved data info
         self.saved_data_table = QTableWidget()
         self.saved_data_table.setColumnCount(4)
         self.saved_data_table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Timestamp", "Status"])
@@ -39,11 +41,10 @@ class SerialPortGUI(QWidget):
         
         # Image label
         self.charger_image_label = QLabel()
-        self.charger_image_label.setFixedSize(80, 80)  # Set a fixed size for the image
+        self.charger_image_label.setFixedSize(80, 80)  # fixed size for the image
         self.charger_image_label.setScaledContents(True)  # Scale image to fit
         self.charger_image_label.setAlignment(Qt.AlignCenter)
         
-        # Try to load an image, fallback to placeholder text if not found
         try:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             logo_path = os.path.join(os.path.dirname(current_dir), 'assets', 'logo1.png')
@@ -53,7 +54,6 @@ class SerialPortGUI(QWidget):
             else:
                 raise FileNotFoundError
         except:
-            # Fallback - create a simple placeholder
             self.charger_image_label.setStyleSheet("""
                 QLabel {
                     background-color: #e0e0e0;
@@ -87,7 +87,7 @@ class SerialPortGUI(QWidget):
         
         # Add image and info to the main horizontal layout
         self.charger_info_main_layout.addWidget(self.charger_image_label)
-        self.charger_info_main_layout.addWidget(charger_info_widget, 1)  # Stretch factor 1 for info
+        self.charger_info_main_layout.addWidget(charger_info_widget, 1)
         
         self.charger_info_box.setLayout(self.charger_info_main_layout)
         self.layout.addWidget(self.charger_info_box)
@@ -113,32 +113,27 @@ class SerialPortGUI(QWidget):
         self.charger_fw_label.setText(f"{fw_major}.{fw_minor}")
 
     def update_charger_image(self, image_path):
-        """Method to update the charger image"""
         try:
             pixmap = QPixmap(image_path)
             if not pixmap.isNull():
                 self.charger_image_label.setPixmap(pixmap)
-                self.charger_image_label.setStyleSheet("")  # Clear placeholder style
+                self.charger_image_label.setStyleSheet("")
             else:
                 raise FileNotFoundError
         except:
-            print(f"Could not load image from {image_path}")
+            pass
 
     def refresh_ports(self):
-        from serial_utils import refresh_ports
         refresh_ports(self.connection_settings.port_combo, self)
 
     def connect_port(self):
-        from serial_utils import connect_serial
         self.buffer.clear()
         self.serial_obj = connect_serial(self.connection_settings.port_combo, self.connection_settings, self)
 
     def disconnect_port(self):
-        from serial_utils import disconnect_serial
         self.serial_obj = disconnect_serial(self.serial_obj, self.connection_settings, self)
 
     def read_serial_data(self):
-        from serial_utils import read_serial
         read_serial(self.serial_obj, self.buffer, self, self.connection_settings)
 
     def save_data_buffer(self, buffer_name, data_frames):
@@ -157,6 +152,5 @@ class SerialPortGUI(QWidget):
             QMessageBox.warning(self, "Not Found", f"No data found for {buffer_name}")
 
     def show_data_view_dialog(self, buffer_name, data_frames):
-        from widgets.data_view_dialog import DataViewDialog
         dlg = DataViewDialog(self, buffer_name, data_frames)
         dlg.exec()

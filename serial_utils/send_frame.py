@@ -129,7 +129,6 @@ def send_battery_query(serial_obj, parent_widget, battery_id, cycle_count):
             #             (battery_id >> 8) & 0xFF, battery_id & 0xFF,
             #             (cycle_count >> 8) & 0xFF, cycle_count & 0xFF,
             #             0x00, 0x00])
-            
             msg = bytes([0x01, 0xAA, 0x00, 0xB3, 
                         (battery_id >> 8) & 0xFF, battery_id & 0xFF,
                         (cycle_count >> 8) & 0xFF, cycle_count & 0xFF,
@@ -139,7 +138,7 @@ def send_battery_query(serial_obj, parent_widget, battery_id, cycle_count):
             print(f"Sent battery query: {' '.join(f'{b:02X}' for b in msg)}")
             
             # Show loading dialog instead of QMessageBox
-            show_loading_dialog(parent_widget, "Please Wait", "Download file", 15000)
+            show_loading_dialog(parent_widget, "Please Wait", "Downloading file", 15000)
             
         except Exception as e:
             QMessageBox.critical(parent_widget, "Error", f"Error during sending battery query: {e}")

@@ -13,16 +13,37 @@ class DataViewDialog(QDialog):
     def __init__(self, parent, buffer_name, data_frames):
         super().__init__(parent)
         self.setWindowTitle(f"Data for {buffer_name}")
-        self.resize(1000, 600)  # Increased width for better layout
+        self.resize(1000, 600)  # Set initial size of the dialog
         self.buffer_name = buffer_name
         self.data_frames = data_frames
         
-        # Initialize hover-related attributes
+        # Initialize hover-related parameters
         self.hover_annotation = None
         self.plotted_lines = {}  # Store line objects with their data
         self.df = None  # Store the DataFrame for hover data access
         
+        # Define units for different parameters
+        self.parameter_units = {
+            'rel_time': '',
+            'charge_voltage': 'milli V',
+            'charge_current': 'centi A',
+            'max_volta_temp': 'centi °C',
+            'avg_volta_temp': 'centi °C',
+            'error_flags': '',
+        }
+        
         self.init_ui()
+
+    def get_parameter_with_unit(self, param_name):
+        """Return parameter name with its unit if available"""
+        unit = self.parameter_units.get(param_name.lower(), '')
+        if unit:
+            return f"{param_name} ({unit})"
+        return param_name
+
+    def get_unit(self, param_name):
+        """Get just the unit for a parameter"""
+        return self.parameter_units.get(param_name.lower(), '')
 
     def init_ui(self):
         main_layout = QHBoxLayout()
@@ -36,7 +57,9 @@ class DataViewDialog(QDialog):
         if self.data_frames:
             headers = list(self.data_frames[0].keys())
             self.table.setColumnCount(len(headers))
-            self.table.setHorizontalHeaderLabels(headers)
+            # Add units to table headers
+            headers_with_units = [self.get_parameter_with_unit(h) for h in headers]
+            self.table.setHorizontalHeaderLabels(headers_with_units)
             self.table.setRowCount(len(self.data_frames))
             for row, entry in enumerate(self.data_frames):
                 for col, key in enumerate(headers):
@@ -55,9 +78,9 @@ class DataViewDialog(QDialog):
         right_widget = QWidget()
         right_layout = QVBoxLayout()
         
-        # Controls (top) - More compact layout
+        # Controls
         controls_widget = QWidget()
-        controls_widget.setMaximumHeight(200)  # Limit height of controls
+        controls_widget.setMaximumHeight(200)
         controls_layout = QVBoxLayout()
         
         # First row: X-axis selection
@@ -67,13 +90,13 @@ class DataViewDialog(QDialog):
         self.x_combo.setMinimumWidth(120)
         x_layout.addWidget(self.x_label)
         x_layout.addWidget(self.x_combo)
-        x_layout.addStretch()  # Push everything to the left
+        x_layout.addStretch()
         controls_layout.addLayout(x_layout)
         
         # Second row: Y-axis selection and controls
         y_controls_layout = QHBoxLayout()
         
-        # Y column selection (left side)
+        # Y column selection
         y_selection_widget = QWidget()
         y_selection_layout = QVBoxLayout()
         y_selection_layout.setContentsMargins(0, 0, 0, 0)
@@ -97,7 +120,7 @@ class DataViewDialog(QDialog):
         y_selection_widget.setLayout(y_selection_layout)
         y_controls_layout.addWidget(y_selection_widget)
         
-        # Scale factors (right side) - More compact
+        # Scale factors
         scale_widget = QWidget()
         scale_layout = QVBoxLayout()
         scale_layout.setContentsMargins(0, 0, 0, 0)
@@ -135,7 +158,7 @@ class DataViewDialog(QDialog):
         controls_widget.setLayout(controls_layout)
         right_layout.addWidget(controls_widget)
         
-        # Plot area (bottom) - Now gets more space
+        # Plot area
         self.figure = Figure(figsize=(16, 12))
         self.canvas = FigureCanvas(self.figure)
         right_layout.addWidget(self.canvas)
@@ -147,7 +170,7 @@ class DataViewDialog(QDialog):
 
         splitter.addWidget(left_widget)
         splitter.addWidget(right_widget)
-        splitter.setSizes([400, 600])  # Give more space to the right side
+        splitter.setSizes([400, 600])
         main_layout.addWidget(splitter)
         self.setLayout(main_layout)
 
@@ -158,11 +181,16 @@ class DataViewDialog(QDialog):
         if self.data_frames:
             self.df = pd.DataFrame(self.data_frames)
             headers = list(self.df.columns)
-            self.x_combo.addItems(headers)
+            
+            # Add units to X-axis combo box items
+            x_items_with_units = [self.get_parameter_with_unit(h) for h in headers]
+            self.x_combo.addItems(x_items_with_units)
             
             for h in headers:
-                # Create checkbox for Y column selection
-                checkbox = QCheckBox(h)
+                # Create checkbox for Y column selection with units
+                checkbox_text = self.get_parameter_with_unit(h)
+                checkbox = QCheckBox(checkbox_text)
+                checkbox.setProperty('original_name', h)  # Store original name for data access
                 self.y_checkboxes[h] = checkbox
                 self.y_checkboxes_layout.addWidget(checkbox)
                 
@@ -174,7 +202,9 @@ class DataViewDialog(QDialog):
                 scale_input.setSingleStep(0.1)
                 scale_input.setMaximumWidth(80)
                 self.scale_inputs[h] = scale_input
-                self.scale_inputs_layout.addRow(f"{h}:", scale_input)
+                # Add units to scale input labels
+                scale_label = self.get_parameter_with_unit(h)
+                self.scale_inputs_layout.addRow(f"{scale_label}:", scale_input)
 
         self.save_btn.clicked.connect(self.save_in_gui)
         self.export_btn.clicked.connect(self.export_excel)
@@ -186,9 +216,16 @@ class DataViewDialog(QDialog):
             return
             
         self.df = pd.DataFrame(self.data_frames)
-        x_col = self.x_combo.currentText()
         
-        # Get checked Y columns
+        # Get original column name from combo box (strip units)
+        x_display_text = self.x_combo.currentText()
+        x_col = None
+        for col in self.df.columns:
+            if self.get_parameter_with_unit(col) == x_display_text:
+                x_col = col
+                break
+        
+        # Get checked Y columns (using original names)
         checked_y_cols = [col for col, checkbox in self.y_checkboxes.items() 
                          if checkbox.isChecked()]
         
@@ -215,7 +252,19 @@ class DataViewDialog(QDialog):
                 scale = self.scale_inputs[y_col].value()
                 y_scaled = y * scale
                 color = colors[idx % len(colors)]
-                label = f"{y_col}" if scale != 1.0 else y_col
+                
+                # Create label with units and scale factor
+                y_unit = self.get_unit(y_col)
+                if scale != 1.0:
+                    if y_unit:
+                        label = f"{y_col} (×{scale}) ({y_unit})"
+                    else:
+                        label = f"{y_col} (×{scale})"
+                else:
+                    if y_unit:
+                        label = f"{y_col} ({y_unit})"
+                    else:
+                        label = y_col
                 
                 # Plot the line and store reference with data
                 line, = ax.plot(x, y_scaled, marker='o', label=label, color=color, 
@@ -231,9 +280,22 @@ class DataViewDialog(QDialog):
                     'scale': scale,
                     'color': color
                 }
-                
-            ax.set_xlabel(x_col)
-            ax.set_ylabel("Y")
+            
+            # Set axis labels with units
+            x_unit = self.get_unit(x_col)
+            x_label = f"{x_col} ({x_unit})" if x_unit else x_col
+            ax.set_xlabel(x_label)
+            
+            # For Y-axis, show "Various Parameters" if multiple units, otherwise show the unit
+            y_units = set(self.get_unit(col) for col in checked_y_cols if self.get_unit(col))
+            if len(y_units) == 1:
+                y_label = f"Y ({list(y_units)[0]})"
+            elif len(y_units) > 1:
+                y_label = "Y (Various Units)"
+            else:
+                y_label = "Y"
+            ax.set_ylabel(y_label)
+            
             ax.set_title(f"Multiple Y vs {x_col}")
             ax.grid(True, alpha=0.3)
             ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -247,7 +309,6 @@ class DataViewDialog(QDialog):
             QMessageBox.warning(self, "Plot Error", f"Failed to plot: {e}")
 
     def on_hover(self, event):
-        """Handle mouse hover events on the plot"""
         if event.inaxes is None:
             return
             
@@ -294,16 +355,14 @@ class DataViewDialog(QDialog):
             except Exception:
                 continue
                 
-        # If we found a close point, show tooltip
         if closest_point and closest_line_info:
             self.show_hover_tooltip(event, closest_point, closest_line_info)
             self.canvas.draw_idle()
     
     def show_hover_tooltip(self, event, point, line_info):
-        """Show tooltip with point information"""
         ax = event.inaxes
         
-        # Create tooltip text with all relevant information
+        # Create tooltip text with all relevant information including units
         x_val = point['x']
         y_val = point['original_y']  # Original unscaled value
         y_scaled = point['y']  # Scaled value for display
@@ -311,16 +370,31 @@ class DataViewDialog(QDialog):
         # Get all data for this point index
         row_data = self.df.iloc[point['idx']]
         
-        # Create comprehensive tooltip
-        tooltip_lines = [
-            f"{line_info['x_col']}: {x_val}",
-            f"{line_info['y_col']}: {y_val}"
-        ]
+        # Create comprehensive tooltip with units
+        x_unit = self.get_unit(line_info['x_col'])
+        y_unit = self.get_unit(line_info['y_col'])
         
-        if line_info['scale'] != 1.0:
-            tooltip_lines.append(f"Scaled: {y_scaled:.3f}")
+        tooltip_lines = []
+        
+        # X value with unit
+        if x_unit:
+            tooltip_lines.append(f"{line_info['x_col']}: {x_val} {x_unit}")
+        else:
+            tooltip_lines.append(f"{line_info['x_col']}: {x_val}")
+        
+        # Y value with unit
+        if y_unit:
+            tooltip_lines.append(f"{line_info['y_col']}: {y_val} {y_unit}")
+        else:
+            tooltip_lines.append(f"{line_info['y_col']}: {y_val}")
             
-        # Add other relevant columns from the same row
+        if line_info['scale'] != 1.0:
+            if y_unit:
+                tooltip_lines.append(f"Scaled: {y_scaled:.3f} {y_unit}")
+            else:
+                tooltip_lines.append(f"Scaled: {y_scaled:.3f}")
+            
+        # Add other relevant columns from the same row with units
         important_cols = ['rel_time', 'charge_voltage', 'charge_current', 'error_flags',
                          'set_c_rate1', 'set_c_rate2', 'max_volta_temp', 'avg_volta_temp']
         
@@ -328,7 +402,11 @@ class DataViewDialog(QDialog):
             if col in row_data and col not in [line_info['x_col'], line_info['y_col']]:
                 value = row_data[col]
                 if pd.notna(value) and str(value) != '--':
-                    tooltip_lines.append(f"{col}: {value}")
+                    unit = self.get_unit(col)
+                    if unit:
+                        tooltip_lines.append(f"{col}: {value} {unit}")
+                    else:
+                        tooltip_lines.append(f"{col}: {value}")
         
         tooltip_text = '\n'.join(tooltip_lines)
         
@@ -347,7 +425,6 @@ class DataViewDialog(QDialog):
         )
 
     def save_in_gui(self):
-        # Inform parent to save this data
         if hasattr(self.parent(), 'save_data_buffer'):
             self.parent().save_data_buffer(self.buffer_name, self.data_frames)
             QMessageBox.information(self, "Saved", "Data saved in GUI.")

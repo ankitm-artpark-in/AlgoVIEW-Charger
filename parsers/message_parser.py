@@ -39,68 +39,6 @@ def process_message(self, message, battery_ids=None, cycle_counts=None):
     if msg_type == "DATA_FRAME":
         handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
 
-
-# frame23 = False
-
-# MESSAGE_IDS_15 = {
-#     (0x01, 0xA1): "CHARGER_VIT",
-#     (0x03, 0xC1): "CHARGER_INT_TEMP_DATA",
-#     (0x01, 0xB0): "CHARGER_Brick_A",
-#     (0x02, 0xB0): "CHARGER_Brick_B",
-#     (0x07, 0xE0): "CHARGER_INFO",
-#     (0xB1, 0xDE): "DEBUG_MESSAGE_1",
-#     (0xB2, 0xDE): "DEBUG_MESSAGE_2",
-    
-#     (0x06, 0x5D): "DISPLAY_DATA",
-#     (0x01, 0x5D): "DATA_FRAME",
-# }
-
-# MESSAGE_IDS_23 = {
-#     (0x05, 0x5D): "DATA_FRAME",
-# }
-
-# def process_message_15(self, message, battery_ids=None, cycle_counts=None):
-#     hex_data = ' '.join([f'{b:02X}' for b in message])
-#     msg_id = (message[2], message[3])
-#     msg_type = MESSAGE_IDS_15.get(msg_id, "Unknown")
-#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-#     print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
-
-#     message_handlers = {
-#         "CHARGER_VIT": handle_charger_vit,
-#         "CHARGER_INT_TEMP_DATA": handle_charger_int_temp_data,
-#         "CHARGER_Brick_A": handle_charger_brick_a,
-#         "CHARGER_Brick_B": handle_charger_brick_b,
-#         "CHARGER_INFO": handle_charger_info,
-#         "DEBUG_MESSAGE_1": handle_debug_message_1,
-#         "DEBUG_MESSAGE_2": handle_debug_message_2,
-
-#         "DISPLAY_DATA": handle_display_data,
-#         # "DATA_FRAME": handle_data_frame,
-#     }
-
-#     if handler := message_handlers.get(msg_type):
-#         handler(self, message, timestamp)
-#     if frame23 != True:    
-#         if msg_type == "DATA_FRAME":
-#             handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
-        
-# def process_message_23(self, message, battery_ids=None, cycle_counts=None):
-#     hex_data = ' '.join([f'{b:02X}' for b in message])
-#     msg_id = (message[2], message[3])
-#     msg_type = MESSAGE_IDS_23.get(msg_id, "Unknown")
-#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-#     print(f"Received message: {hex_data} | Type: {msg_type} | Timestamp: {timestamp}")
-    
-#     # message_handlers = {
-#     #     "DATA_FRAME" : handle_data_frame
-#     # }
-#     # if handler := message_handlers.get(msg_type):
-#     #     handler(self, message, timestamp)
-    
-#     if msg_type == "DATA_FRAME":
-#        handle_data_frame(self, message, timestamp, battery_ids, cycle_counts)
-
 def handle_charger_vit(self, message, timestamp):
     voltage = (message[5] << 8 | message[4])
     current = (message[7] << 8 | message[6])

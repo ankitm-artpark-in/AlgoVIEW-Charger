@@ -19,8 +19,7 @@ class CenterScreen(QWidget):
     def init_ui(self):
         main_layout = QVBoxLayout()
         
-        # Recent data section (moved to top)
-        recent_data_label = QLabel("Recent Data")
+        recent_data_label = QLabel("Recently Charged Cycles")
         recent_data_label.setFont(self.default_font)
         main_layout.addWidget(recent_data_label)
 
@@ -40,11 +39,11 @@ class CenterScreen(QWidget):
         main_layout.addWidget(self.recent_table)
 
         # Saved logs section
-        saved_logs_label = QLabel("Saved Logs")
+        saved_logs_label = QLabel("Saved Charging Cycles")
         saved_logs_label.setFont(self.default_font)
         main_layout.addWidget(saved_logs_label)
 
-        # Table setup for saved logs (all data)
+        # Table setup for saved logs
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Download Data"])
@@ -63,7 +62,7 @@ class CenterScreen(QWidget):
         self.refresh_table()
 
     def refresh_table(self):
-        # Refresh recent data table (moved to top)
+        # Refresh recent data table
         recent_battery_ids = getattr(self.main_window, 'recent_battery_ids', [])
         cycle_counts = getattr(self.main_window, 'cycle_counts', {})
         
