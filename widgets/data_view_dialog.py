@@ -259,18 +259,12 @@ class DataViewDialog(QDialog):
                 y_scaled = y * scale
                 color = colors[idx % len(colors)]
                 
-                # Create label with units and scale factor
+                # Create label WITHOUT scaling info - just parameter name and units
                 y_unit = self.get_unit(y_col)
-                if scale != 1.0:
-                    if y_unit:
-                        label = f"{y_col} (×{scale}) ({y_unit})"
-                    else:
-                        label = f"{y_col} (×{scale})"
+                if y_unit:
+                    label = f"{y_col} ({y_unit})"
                 else:
-                    if y_unit:
-                        label = f"{y_col} ({y_unit})"
-                    else:
-                        label = y_col
+                    label = y_col
                 
                 # Plot the line and store reference with data
                 line, = ax.plot(x, y_scaled, marker='o', label=label, color=color, 
@@ -396,7 +390,7 @@ class DataViewDialog(QDialog):
             
         if line_info['scale'] != 1.0:
             if y_unit:
-                tooltip_lines.append(f"Scaled: {y_scaled:.3f} {y_unit}")
+                tooltip_lines.append(f"Scaled: {y_scaled:.3f}")
             else:
                 tooltip_lines.append(f"Scaled: {y_scaled:.3f}")
             
