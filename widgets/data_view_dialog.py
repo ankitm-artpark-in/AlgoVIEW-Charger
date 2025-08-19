@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QTableWidget, QTableWidgetI
                              QPushButton, QHBoxLayout, QFileDialog, QMessageBox, 
                              QComboBox, QLabel, QWidget, QSplitter, QListWidget, 
                              QListWidgetItem, QLineEdit, QFormLayout, QGroupBox,
-                             QScrollArea, QCheckBox, QSpinBox, QDoubleSpinBox)
+                             QScrollArea, QCheckBox, QSpinBox, QDoubleSpinBox, QApplication)
 from PySide6.QtCore import Qt
 import pandas as pd
 import numpy as np
@@ -13,7 +13,7 @@ class DataViewDialog(QDialog):
     def __init__(self, parent, buffer_name, data_frames):
         super().__init__(parent)
         self.setWindowTitle(f"Data for {buffer_name}")
-        self.resize(1000, 600)  # Set initial size of the dialog
+        self.resize(1000, 600)  # Set initial size first
         self.buffer_name = buffer_name
         self.data_frames = data_frames
         
@@ -33,6 +33,12 @@ class DataViewDialog(QDialog):
         }
         
         self.init_ui()
+        
+        # Set to full screen geometry
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        self.setGeometry(screen_geometry)
+        self.setWindowState(Qt.WindowMaximized)
 
     def get_parameter_with_unit(self, param_name):
         """Return parameter name with its unit if available"""
