@@ -32,6 +32,12 @@ class DataViewDialog(QDialog):
             'error_flags': '',
         }
         
+        # Define default scaling factors for specific parameters
+        self.default_scale_factors = {
+            'charge_voltage': 0.001,
+            'charge_current': 0.01,
+        }
+        
         self.init_ui()
         
         # Set to full screen geometry
@@ -203,7 +209,11 @@ class DataViewDialog(QDialog):
                 # Create scale input with more compact widget
                 scale_input = QDoubleSpinBox()
                 scale_input.setRange(0.001, 1000.0)
-                scale_input.setValue(1.0)
+                
+                # Set default value based on parameter name
+                default_value = self.default_scale_factors.get(h, 1.0)
+                scale_input.setValue(default_value)
+                
                 scale_input.setDecimals(3)
                 scale_input.setSingleStep(0.1)
                 scale_input.setMaximumWidth(80)
