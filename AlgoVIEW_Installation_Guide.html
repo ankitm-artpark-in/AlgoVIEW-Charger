@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AlgoVIEW_Installation_Guide.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="%F0%9F%9A%80-algoview-x-installation-guide">🚀 AlgoVIEW-X Installation Guide</h1>
+<p>This document provides a step-by-step installation process for <strong>AlgoVIEW-X</strong> along with all required dependencies.<br>
+Please follow the steps carefully in the correct order.</p>
+<!-- [AlgoVIEW-X Setup Files](drive link) -->
+<h2 id="%F0%9F%93%A6-prerequisites">📦 Prerequisites</h2>
+<p>Before installing AlgoVIEW-X, ensure you have the following:</p>
+<ol>
+<li><strong>UART Driver</strong> (CP210x USB-to-UART Bridge Driver)</li>
+<li><strong>Python</strong> (Version 3.12 or above)</li>
+<li><strong>LibInstaller</strong> (Python dependencies installer)</li>
+<li><strong>AlgoVIEW-X Application</strong></li>
+</ol>
+<p>⚠️ <strong>Note:</strong> Administrator privileges are required during installation.</p>
+<hr>
+<h3 id="%F0%9F%94%B9-install-uart-driver">🔹 Install UART Driver</h3>
+<p>The application communicates with the USB-TTL module using the <strong>CP210x driver</strong> between AlgoVIEW hardware and software.</p>
+<ul>
+<li>Driver files are available in the <strong><code>CP210x_Universal_Windows_Driver</code></strong> folder.</li>
+</ul>
+<p><strong>Instructions:</strong></p>
+<ol>
+<li>Run the installer (<code>Right-click → Install</code>).</li>
+<li>Follow the installation process until completion.</li>
+<li>Restart your PC if prompted.</li>
+</ol>
+<p>✅ <strong>Verification:</strong><br>
+Open <strong>Device Manager</strong> → Expand <strong>Ports (COM &amp; LPT)</strong> → Your USB-TTL device should appear without errors.</p>
+<p><img src="assets/installing_cp_drivers.png" alt="UART Driver Installation"></p>
+<hr>
+<h3 id="%F0%9F%94%B9-install-python">🔹 Install Python</h3>
+<ul>
+<li>Recommended version: <strong>Python 3.12 or above</strong>.</li>
+<li>Download from:
+<ul>
+<li><a href="https://www.python.org/downloads/release/python-3135/">Python.org</a></li>
+<li><a href="https://apps.microsoft.com/detail/9NCVDN91XZQP?hl=en-US&amp;gl=US">Microsoft Store</a></li>
+</ul>
+</li>
+</ul>
+<p><strong>Instructions:</strong></p>
+<ol>
+<li>Run the Python installer (<code>Right-click → Run as Administrator</code>).
+<br></li>
+</ol>
+<p><img src="assets/home_py_installer.png" alt="Python Installation"></p>
+<ol start="2">
+<li>✅ <strong>Important:</strong> Select <strong>“Add Python to PATH”</strong> before proceeding.
+<br></li>
+</ol>
+<p><img src="assets/installing_py.png" alt="Python Installation"></p>
+<ol start="3">
+<li>Complete the installation process.
+<br></li>
+</ol>
+<p><img src="assets/installing_py_done.png" alt="Python Installation"></p>
+<p>✅ <strong>Verification:</strong><br>
+Open <strong>Command Prompt (CMD)</strong> or <strong>PowerShell</strong> and run:</p>
+<pre class="hljs"><code><div>python --version
+</div></code></pre>
+<p>Expected Output: <code>Python 3.12.x</code></p>
+<hr>
+<h3 id="%F0%9F%94%B9-run-libinstaller">🔹 Run LibInstaller</h3>
+<ul>
+<li>The <strong>LibInstaller</strong> will automatically install all required Python dependencies.</li>
+</ul>
+<p><strong>Instructions:</strong></p>
+<ol>
+<li>Locate and run the LibInstaller file (Double-click to start).</li>
+<li>Follow the on-screen instructions and press Enter if the process has executed successfully.</li>
+</ol>
+<p><img src="assets/LibInstaller_op.png" alt="Lib Installer Outputs"></p>
+<hr>
+<h3 id="%F0%9F%94%B9-install-algoview-x-application">🔹 Install AlgoVIEW-X Application</h3>
+<ul>
+<li>The <strong>LibInstaller</strong> will automatically install all required Python dependencies.</li>
+</ul>
+<p><strong>Instructions:</strong></p>
+<ol>
+<li>Run the AlgoVIEW-X setup file.
+<br></li>
+</ol>
+<p><img src="assets/setup_p1.png" alt="AlgoVIEW-X Setup"></p>
+<ol start="2">
+<li>Follow the installation wizard step-by-step.
+<br></li>
+</ol>
+<p><img src="assets/setup_p2.png" alt="AlgoVIEW-X Setup"></p>
+<ol start="3">
+<li>Once installed, launch the application from the Start Menu or Desktop shortcut.
+<br></li>
+</ol>
+<p><img src="assets/setup_p5.png" alt="AlgoVIEW-X Setup"></p>
+<h2 id="%E2%9A%A0%EF%B8%8F-troubleshooting-guide">⚠️ Troubleshooting Guide</h2>
+<p>If the installation of <strong>AlgoVIEW-X</strong> or its dependencies fails, follow the steps below to resolve common issues.</p>
+<h3 id="1-uart-driver-installation-issues">1. UART Driver Installation Issues</h3>
+<ul>
+<li>
+<p>If the provided driver files are corrupted, download the latest drivers from the official website:<br>
+👉 <a href="https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads">CP210x Universal Windows Driver</a></p>
+</li>
+<li>
+<p>Ensure <strong>Windows Driver Updates</strong> are installed.</p>
+</li>
+<li>
+<p>Check for and install any pending <strong>Windows Updates</strong>.</p>
+</li>
+</ul>
+<hr>
+<h3 id="2-python--libinstaller-issues">2. Python &amp; LibInstaller Issues</h3>
+<ul>
+<li>
+<p>Verify that you have the latest version of <strong>Python 3.12 (or higher)</strong> installed.</p>
+<ul>
+<li>You can download it from the official <a href="https://www.python.org/downloads/">Python website</a> or via the <a href="https://apps.microsoft.com/detail/9pnrbtzxmb4z?hl=en-US&amp;gl=IN">Microsoft Store</a>.</li>
+</ul>
+</li>
+<li>
+<p>If <strong>LibInstaller</strong> fails, re-run the installer to ensure all required libraries are correctly installed.</p>
+</li>
+<li>
+<p>If the problem persists, run the installation commands manually through <strong>Command Prompt (Run as Administrator)</strong>.</p>
+</li>
+</ul>
+<h3 id="libraries-to-be-installed">Libraries to be installed</h3>
+<pre class="hljs"><code><div>pip install pyside6
+</div></code></pre>
+<p>Expected Output:
+<img src="assets/pyside6.png" alt="Pyside6"></p>
+<pre class="hljs"><code><div>pip install numpy
+</div></code></pre>
+<p>Expected Output:
+<img src="assets/numpy.png" alt="Numpy"></p>
+<pre class="hljs"><code><div>pip install pyserial
+</div></code></pre>
+<p>Expected Output:
+<img src="assets/pyserial.png" alt="Pyserial"></p>
+<pre class="hljs"><code><div>pip install pandas
+</div></code></pre>
+<p>Expected Output:
+<img src="assets/pandas.png" alt="Pandas"></p>
+<pre class="hljs"><code><div>pip install matplotlib
+</div></code></pre>
+<p>Expected Output:
+<img src="assets/matplotlib.png" alt="Matplotlib"></p>
+<hr>
+<h3 id="3-algoview-x-installation-issues">3. AlgoVIEW-X Installation Issues</h3>
+<ul>
+<li>Confirm that <strong>UART Driver</strong> and <strong>Python with required libraries</strong> are successfully installed.</li>
+<li>Ensure your system is updated with the latest patches and software versions.</li>
+<li>Restart your device if necessary.</li>
+</ul>
+<hr>
+<p>✅ Following these steps should resolve most installation-related problems. If issues continue, please reach out to the support team with detailed logs and error messages.</p>
+
+</body>
+</html>
