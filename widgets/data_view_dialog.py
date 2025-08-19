@@ -216,6 +216,19 @@ class DataViewDialog(QDialog):
         self.export_btn.clicked.connect(self.export_excel)
         self.plot_btn.clicked.connect(self.plot_data)
 
+    def create_plot_title(self, x_col, checked_y_cols):
+        """Create a descriptive plot title showing which parameters are plotted"""
+        if len(checked_y_cols) == 1:
+            return f"{checked_y_cols[0]} vs {x_col}"
+        elif len(checked_y_cols) <= 3:
+            y_list = ", ".join(checked_y_cols)
+            return f"{y_list} vs {x_col}"
+        else:
+            # If too many parameters, show first few and indicate there are more
+            y_list = ", ".join(checked_y_cols[:2])
+            remaining = len(checked_y_cols) - 2
+            return f"{y_list} and {remaining} more vs {x_col}"
+
     def plot_data(self):
         if not self.data_frames:
             QMessageBox.warning(self, "No Data", "No data to plot.")
@@ -296,7 +309,10 @@ class DataViewDialog(QDialog):
                 y_label = "Y"
             ax.set_ylabel(y_label)
             
-            ax.set_title(f"Multiple Y vs {x_col}")
+            # Create dynamic title showing which parameters are plotted
+            plot_title = self.create_plot_title(x_col, checked_y_cols)
+            ax.set_title(plot_title)
+            
             ax.grid(True, alpha=0.3)
             ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
             self.figure.tight_layout()
