@@ -92,7 +92,7 @@ class DataViewDialog(QDialog):
         
         # Controls
         controls_widget = QWidget()
-        controls_widget.setMaximumHeight(200)
+        controls_widget.setMaximumHeight(200)  # Reduced height since no scrolling needed
         controls_layout = QVBoxLayout()
         
         # First row: X-axis selection
@@ -105,56 +105,36 @@ class DataViewDialog(QDialog):
         x_layout.addStretch()
         controls_layout.addLayout(x_layout)
         
-        # Second row: Y-axis selection and controls
+        # Second row: Y-axis controls side by side
         y_controls_layout = QHBoxLayout()
         
-        # Y column selection
-        y_selection_widget = QWidget()
+        # Left side: Y column selection
+        y_selection_group = QGroupBox("Select Y-axis Parameters")
         y_selection_layout = QVBoxLayout()
-        y_selection_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.y_label = QLabel("Y columns:")
-        y_selection_layout.addWidget(self.y_label)
-        
-        # Scrollable area for Y column checkboxes
-        scroll_area = QScrollArea()
-        scroll_area.setMaximumHeight(100)
-        scroll_area.setMinimumWidth(150)
-        scroll_area.setWidgetResizable(True)
+        y_selection_layout.setContentsMargins(5, 5, 5, 5)
         
         self.y_checkboxes_widget = QWidget()
         self.y_checkboxes_layout = QVBoxLayout()
-        self.y_checkboxes_layout.setContentsMargins(5, 5, 5, 5)
+        self.y_checkboxes_layout.setContentsMargins(0, 0, 0, 0)
         self.y_checkboxes_widget.setLayout(self.y_checkboxes_layout)
-        scroll_area.setWidget(self.y_checkboxes_widget)
         
-        y_selection_layout.addWidget(scroll_area)
-        y_selection_widget.setLayout(y_selection_layout)
-        y_controls_layout.addWidget(y_selection_widget)
+        y_selection_layout.addWidget(self.y_checkboxes_widget)
+        y_selection_group.setLayout(y_selection_layout)
+        y_controls_layout.addWidget(y_selection_group)
         
-        # Scale factors
-        scale_widget = QWidget()
+        # Right side: Scale factors
+        scale_group = QGroupBox("Scale Factors")
         scale_layout = QVBoxLayout()
-        scale_layout.setContentsMargins(0, 0, 0, 0)
-        
-        scale_label = QLabel("Scale factors:")
-        scale_layout.addWidget(scale_label)
-        
-        # Scrollable area for scale inputs
-        scale_scroll = QScrollArea()
-        scale_scroll.setMaximumHeight(100)
-        scale_scroll.setMinimumWidth(200)
-        scale_scroll.setWidgetResizable(True)
+        scale_layout.setContentsMargins(5, 5, 5, 5)
         
         self.scale_inputs_widget = QWidget()
         self.scale_inputs_layout = QFormLayout()
-        self.scale_inputs_layout.setContentsMargins(5, 5, 5, 5)
+        self.scale_inputs_layout.setContentsMargins(0, 0, 0, 0)
         self.scale_inputs_widget.setLayout(self.scale_inputs_layout)
-        scale_scroll.setWidget(self.scale_inputs_widget)
         
-        scale_layout.addWidget(scale_scroll)
-        scale_widget.setLayout(scale_layout)
-        y_controls_layout.addWidget(scale_widget)
+        scale_layout.addWidget(self.scale_inputs_widget)
+        scale_group.setLayout(scale_layout)
+        y_controls_layout.addWidget(scale_group)
         
         # Plot button
         plot_layout = QVBoxLayout()
@@ -194,11 +174,14 @@ class DataViewDialog(QDialog):
             self.df = pd.DataFrame(self.data_frames)
             headers = list(self.df.columns)
             
-            # Add units to X-axis combo box items
-            x_items_with_units = [self.get_parameter_with_unit(h) for h in headers]
+            # Filter out c_rate parameters from plotting options
+            plotting_headers = [h for h in headers if not h.lower().startswith('set_c_rate')]
+            
+            # Add units to X-axis combo box items (filtered)
+            x_items_with_units = [self.get_parameter_with_unit(h) for h in plotting_headers]
             self.x_combo.addItems(x_items_with_units)
             
-            for h in headers:
+            for h in plotting_headers:
                 # Create checkbox for Y column selection with units
                 checkbox_text = self.get_parameter_with_unit(h)
                 checkbox = QCheckBox(checkbox_text)
@@ -206,7 +189,7 @@ class DataViewDialog(QDialog):
                 self.y_checkboxes[h] = checkbox
                 self.y_checkboxes_layout.addWidget(checkbox)
                 
-                # Create scale input with more compact widget
+                # Create scale input
                 scale_input = QDoubleSpinBox()
                 scale_input.setRange(0.001, 1000.0)
                 
