@@ -30,13 +30,28 @@ class DataViewDialog(QDialog):
             'max_volta_temp': '°C',
             'avg_volta_temp': '°C',
             'error_flags': '',
+            'set_c_rate1': '',
+            'set_c_rate2': '',
         }
         
         # Define default scaling factors for specific parameters
         self.default_scale_factors = {
             'charge_voltage': 0.001,
             'charge_current': 0.01,
+            'max_volta_temp': 0.01,
+            'avg_volta_temp': 0.01,
+            'set_c_rate1': 0.001,
+            'set_c_rate2': 0.001,
         }
+        
+        # Define allowed Y-axis parameters
+        self.allowed_y_parameters = [
+            'charge_voltage',
+            'charge_current', 
+            'max_volta_temp',
+            'avg_volta_temp',
+            'rel_time'
+        ]
         
         self.init_ui()
         
@@ -191,20 +206,21 @@ class DataViewDialog(QDialog):
             self.df = pd.DataFrame(scaled_data_frames)
             headers = list(self.df.columns)
             
-            # Filter out c_rate parameters from plotting options
+            # Filter out c_rate parameters from plotting options for X-axis
             plotting_headers = [h for h in headers if not h.lower().startswith('set_c_rate')]
             
             # Add units to X-axis combo box items (filtered)
             x_items_with_units = [self.get_parameter_with_unit(h) for h in plotting_headers]
             self.x_combo.addItems(x_items_with_units)
             
-            for h in plotting_headers:
-                # Create checkbox for Y column selection with units
-                checkbox_text = self.get_parameter_with_unit(h)
-                checkbox = QCheckBox(checkbox_text)
-                checkbox.setProperty('original_name', h)  # Store original name for data access
-                self.y_checkboxes[h] = checkbox
-                self.y_checkboxes_layout.addWidget(checkbox)
+            # Only add Y-axis checkboxes for allowed parameters that exist in data
+            for param in self.allowed_y_parameters:
+                if param in headers:  # Only add if the parameter exists in the data
+                    checkbox_text = self.get_parameter_with_unit(param)
+                    checkbox = QCheckBox(checkbox_text)
+                    checkbox.setProperty('original_name', param)  # Store original name for data access
+                    self.y_checkboxes[param] = checkbox
+                    self.y_checkboxes_layout.addWidget(checkbox)
 
         self.save_btn.clicked.connect(self.save_in_gui)
         self.export_btn.clicked.connect(self.export_excel)
