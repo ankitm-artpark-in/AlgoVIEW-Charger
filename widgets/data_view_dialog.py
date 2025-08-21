@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QTableWidget, QTableWidgetI
                              QListWidgetItem, QLineEdit, QFormLayout, QGroupBox,
                              QScrollArea, QCheckBox, QSpinBox, QDoubleSpinBox, QApplication)
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 import pandas as pd
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT
@@ -21,6 +22,7 @@ class DataViewDialog(QDialog):
         self.hover_annotation = None
         self.plotted_lines = {}  # Store line objects with their data
         self.df = None  # Store the DataFrame for hover data access
+        self.last_hovered_point = None  # Store the last hovered point for double-click
         
         # Define units for different parameters
         self.parameter_units = {
@@ -89,6 +91,25 @@ class DataViewDialog(QDialog):
                         pass
             scaled_frames.append(scaled_entry)
         return scaled_frames
+
+    def highlight_table_row(self, row_index):
+        """Highlight a specific row in the table"""
+        # Clear previous highlighting
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item:
+                    item.setBackground(QColor())  # Reset to default background
+        
+        # Highlight the selected row
+        if 0 <= row_index < self.table.rowCount():
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row_index, col)
+                if item:
+                    item.setBackground(QColor(255, 255, 0, 100))  # Light yellow highlight
+            
+            # Scroll to the highlighted row
+            self.table.scrollToItem(self.table.item(row_index, 0))
 
     def init_ui(self):
         main_layout = QHBoxLayout()
@@ -320,12 +341,20 @@ class DataViewDialog(QDialog):
             ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
             self.figure.tight_layout()
             
-            # Connect hover event
+            # Connect hover and double-click events
             self.canvas.mpl_connect('motion_notify_event', self.on_hover)
+            self.canvas.mpl_connect('button_press_event', self.on_double_click)
             self.canvas.draw()
             
         except Exception as e:
             QMessageBox.warning(self, "Plot Error", f"Failed to plot: {e}")
+
+    def on_double_click(self, event):
+        """Handle double-click events on the plot"""
+        if event.dblclick and self.last_hovered_point is not None:
+            # Highlight the corresponding row in the table
+            row_index = self.last_hovered_point['idx']
+            self.highlight_table_row(row_index)
 
     def on_hover(self, event):
         if event.inaxes is None:
@@ -374,8 +403,13 @@ class DataViewDialog(QDialog):
                 continue
                 
         if closest_point and closest_line_info:
+            # Store the last hovered point for double-click handling
+            self.last_hovered_point = closest_point
             self.show_hover_tooltip(event, closest_point, closest_line_info)
             self.canvas.draw_idle()
+        else:
+            # Clear the last hovered point if no point is close
+            self.last_hovered_point = None
     
     def show_hover_tooltip(self, event, point, line_info):
         ax = event.inaxes
@@ -392,6 +426,10 @@ class DataViewDialog(QDialog):
         y_unit = self.get_unit(line_info['y_col'])
         
         tooltip_lines = []
+        
+        # Add instruction for double-click
+        tooltip_lines.append("Double-click to highlight in table")
+        tooltip_lines.append("─" * 30)  # Separator line
         
         # X value with unit
         if x_unit:
