@@ -25,10 +25,10 @@ class DataViewDialog(QDialog):
         # Define units for different parameters
         self.parameter_units = {
             'rel_time': '',
-            'charge_voltage': 'milli V',
-            'charge_current': 'centi A',
-            'max_volta_temp': 'centi °C',
-            'avg_volta_temp': 'centi °C',
+            'charge_voltage': 'V',
+            'charge_current': 'A',
+            'max_volta_temp': '°C',
+            'avg_volta_temp': '°C',
             'error_flags': '',
         }
         
@@ -57,25 +57,55 @@ class DataViewDialog(QDialog):
         """Get just the unit for a parameter"""
         return self.parameter_units.get(param_name.lower(), '')
 
+    def apply_scaling_to_data_frames(self):
+        """Apply scaling factors to data frames and return scaled version"""
+        if not self.data_frames:
+            return []
+            
+        scaled_frames = []
+        for entry in self.data_frames:
+            scaled_entry = entry.copy()
+            for param, scale_factor in self.default_scale_factors.items():
+                if param in scaled_entry:
+                    try:
+                        scaled_entry[param] = float(scaled_entry[param]) * scale_factor
+                    except (ValueError, TypeError):
+                        # Keep original value if conversion fails
+                        pass
+            scaled_frames.append(scaled_entry)
+        return scaled_frames
+
     def init_ui(self):
         main_layout = QHBoxLayout()
         splitter = QSplitter()
         
-        # Left: Table
+        # Left: Table with scaled values
         left_widget = QWidget()
         left_layout = QVBoxLayout()
         self.table = QTableWidget()
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        
         if self.data_frames:
-            headers = list(self.data_frames[0].keys())
+            # Get scaled data for display in table
+            scaled_data_frames = self.apply_scaling_to_data_frames()
+            
+            headers = list(scaled_data_frames[0].keys())
             self.table.setColumnCount(len(headers))
             # Add units to table headers
             headers_with_units = [self.get_parameter_with_unit(h) for h in headers]
             self.table.setHorizontalHeaderLabels(headers_with_units)
-            self.table.setRowCount(len(self.data_frames))
-            for row, entry in enumerate(self.data_frames):
+            self.table.setRowCount(len(scaled_data_frames))
+            
+            for row, entry in enumerate(scaled_data_frames):
                 for col, key in enumerate(headers):
-                    self.table.setItem(row, col, QTableWidgetItem(str(entry[key])))
+                    value = entry[key]
+                    # Format scaled numeric values to appropriate precision
+                    if key in self.default_scale_factors and isinstance(value, (int, float)):
+                        formatted_value = f"{value:.3f}"
+                    else:
+                        formatted_value = str(value)
+                    self.table.setItem(row, col, QTableWidgetItem(formatted_value))
+        
         left_layout.addWidget(self.table)
         
         btn_layout = QHBoxLayout()
@@ -92,7 +122,7 @@ class DataViewDialog(QDialog):
         
         # Controls
         controls_widget = QWidget()
-        controls_widget.setMaximumHeight(200)  # Reduced height since no scrolling needed
+        controls_widget.setMaximumHeight(150)  # Reduced height since no scaling controls
         controls_layout = QVBoxLayout()
         
         # First row: X-axis selection
@@ -105,10 +135,10 @@ class DataViewDialog(QDialog):
         x_layout.addStretch()
         controls_layout.addLayout(x_layout)
         
-        # Second row: Y-axis controls side by side
+        # Second row: Y-axis parameter selection
         y_controls_layout = QHBoxLayout()
         
-        # Left side: Y column selection
+        # Y column selection
         y_selection_group = QGroupBox("Select Y-axis Parameters")
         y_selection_layout = QVBoxLayout()
         y_selection_layout.setContentsMargins(5, 5, 5, 5)
@@ -121,20 +151,6 @@ class DataViewDialog(QDialog):
         y_selection_layout.addWidget(self.y_checkboxes_widget)
         y_selection_group.setLayout(y_selection_layout)
         y_controls_layout.addWidget(y_selection_group)
-        
-        # Right side: Scale factors
-        scale_group = QGroupBox("Scale Factors")
-        scale_layout = QVBoxLayout()
-        scale_layout.setContentsMargins(5, 5, 5, 5)
-        
-        self.scale_inputs_widget = QWidget()
-        self.scale_inputs_layout = QFormLayout()
-        self.scale_inputs_layout.setContentsMargins(0, 0, 0, 0)
-        self.scale_inputs_widget.setLayout(self.scale_inputs_layout)
-        
-        scale_layout.addWidget(self.scale_inputs_widget)
-        scale_group.setLayout(scale_layout)
-        y_controls_layout.addWidget(scale_group)
         
         # Plot button
         plot_layout = QVBoxLayout()
@@ -168,10 +184,11 @@ class DataViewDialog(QDialog):
 
         # Initialize controls with data
         self.y_checkboxes = {}
-        self.scale_inputs = {}
         
         if self.data_frames:
-            self.df = pd.DataFrame(self.data_frames)
+            # Use scaled data for plotting
+            scaled_data_frames = self.apply_scaling_to_data_frames()
+            self.df = pd.DataFrame(scaled_data_frames)
             headers = list(self.df.columns)
             
             # Filter out c_rate parameters from plotting options
@@ -188,22 +205,6 @@ class DataViewDialog(QDialog):
                 checkbox.setProperty('original_name', h)  # Store original name for data access
                 self.y_checkboxes[h] = checkbox
                 self.y_checkboxes_layout.addWidget(checkbox)
-                
-                # Create scale input
-                scale_input = QDoubleSpinBox()
-                scale_input.setRange(0.001, 1000.0)
-                
-                # Set default value based on parameter name
-                default_value = self.default_scale_factors.get(h, 1.0)
-                scale_input.setValue(default_value)
-                
-                scale_input.setDecimals(3)
-                scale_input.setSingleStep(0.1)
-                scale_input.setMaximumWidth(80)
-                self.scale_inputs[h] = scale_input
-                # Add units to scale input labels
-                scale_label = self.get_parameter_with_unit(h)
-                self.scale_inputs_layout.addRow(f"{scale_label}:", scale_input)
 
         self.save_btn.clicked.connect(self.save_in_gui)
         self.export_btn.clicked.connect(self.export_excel)
@@ -227,8 +228,6 @@ class DataViewDialog(QDialog):
             QMessageBox.warning(self, "No Data", "No data to plot.")
             return
             
-        self.df = pd.DataFrame(self.data_frames)
-        
         # Get original column name from combo box (strip units)
         x_display_text = self.x_combo.currentText()
         x_col = None
@@ -260,12 +259,9 @@ class DataViewDialog(QDialog):
             
             for idx, y_col in enumerate(checked_y_cols):
                 y = self.df[y_col]
-                # Get scale factor from spinbox
-                scale = self.scale_inputs[y_col].value()
-                y_scaled = y * scale
                 color = colors[idx % len(colors)]
                 
-                # Create label WITHOUT scaling info - just parameter name and units
+                # Create label with parameter name and units
                 y_unit = self.get_unit(y_col)
                 if y_unit:
                     label = f"{y_col} ({y_unit})"
@@ -273,7 +269,7 @@ class DataViewDialog(QDialog):
                     label = y_col
                 
                 # Plot the line and store reference with data
-                line, = ax.plot(x, y_scaled, marker='o', label=label, color=color, 
+                line, = ax.plot(x, y, marker='o', label=label, color=color, 
                               linewidth=2, markersize=4)
                 
                 # Store line data for hover functionality
@@ -282,8 +278,6 @@ class DataViewDialog(QDialog):
                     'y_col': y_col,
                     'x_data': x.values,
                     'y_data': y.values,
-                    'y_scaled': y_scaled.values,
-                    'scale': scale,
                     'color': color
                 }
             
@@ -334,7 +328,7 @@ class DataViewDialog(QDialog):
         for line, line_data in self.plotted_lines.items():
             # Get the line's data
             x_data = line_data['x_data']
-            y_data = line_data['y_scaled']
+            y_data = line_data['y_data']
             
             # Convert data coordinates to display coordinates
             try:
@@ -356,8 +350,7 @@ class DataViewDialog(QDialog):
                     closest_point = {
                         'idx': min_idx,
                         'x': x_data[min_idx],
-                        'y': y_data[min_idx],
-                        'original_y': line_data['y_data'][min_idx]
+                        'y': y_data[min_idx]
                     }
                     closest_line_info = line_data
                     
@@ -373,8 +366,7 @@ class DataViewDialog(QDialog):
         
         # Create tooltip text with all relevant information including units
         x_val = point['x']
-        y_val = point['original_y']  # Original unscaled value
-        y_scaled = point['y']  # Scaled value for display
+        y_val = point['y']
         
         # Get all data for this point index
         row_data = self.df.iloc[point['idx']]
@@ -393,15 +385,9 @@ class DataViewDialog(QDialog):
         
         # Y value with unit
         if y_unit:
-            tooltip_lines.append(f"{line_info['y_col']}: {y_val} {y_unit}")
+            tooltip_lines.append(f"{line_info['y_col']}: {y_val:.3f} {y_unit}")
         else:
-            tooltip_lines.append(f"{line_info['y_col']}: {y_val}")
-            
-        if line_info['scale'] != 1.0:
-            if y_unit:
-                tooltip_lines.append(f"Scaled: {y_scaled:.3f}")
-            else:
-                tooltip_lines.append(f"Scaled: {y_scaled:.3f}")
+            tooltip_lines.append(f"{line_info['y_col']}: {y_val:.3f}")
             
         # Add other relevant columns from the same row with units
         important_cols = ['rel_time', 'charge_voltage', 'charge_current', 'error_flags',
@@ -413,7 +399,10 @@ class DataViewDialog(QDialog):
                 if pd.notna(value) and str(value) != '--':
                     unit = self.get_unit(col)
                     if unit:
-                        tooltip_lines.append(f"{col}: {value} {unit}")
+                        if isinstance(value, (int, float)) and col in self.default_scale_factors:
+                            tooltip_lines.append(f"{col}: {value:.3f} {unit}")
+                        else:
+                            tooltip_lines.append(f"{col}: {value} {unit}")
                     else:
                         tooltip_lines.append(f"{col}: {value}")
         
@@ -422,7 +411,7 @@ class DataViewDialog(QDialog):
         # Create annotation
         self.hover_annotation = ax.annotate(
             tooltip_text,
-            xy=(x_val, y_scaled),
+            xy=(x_val, y_val),
             xytext=(10, 10),
             textcoords='offset points',
             bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.9, edgecolor='black'),
@@ -435,8 +424,10 @@ class DataViewDialog(QDialog):
 
     def save_in_gui(self):
         if hasattr(self.parent(), 'save_data_buffer'):
-            self.parent().save_data_buffer(self.buffer_name, self.data_frames)
-            QMessageBox.information(self, "Saved", "Data saved in GUI.")
+            # Save the scaled data
+            scaled_data_frames = self.apply_scaling_to_data_frames()
+            self.parent().save_data_buffer(self.buffer_name, scaled_data_frames)
+            QMessageBox.information(self, "Saved", "Scaled data saved in GUI.")
         else:
             QMessageBox.warning(self, "Error", "Cannot save data in GUI.")
 
@@ -447,9 +438,11 @@ class DataViewDialog(QDialog):
             
         path, _ = QFileDialog.getSaveFileName(self, "Export as Excel", f"{self.buffer_name}.xlsx", "Excel Files (*.xlsx)")
         if path:
-            df = pd.DataFrame(self.data_frames)
+            # Export the scaled data
+            scaled_data_frames = self.apply_scaling_to_data_frames()
+            df = pd.DataFrame(scaled_data_frames)
             try:
                 df.to_excel(path, index=False)
-                QMessageBox.information(self, "Exported", f"Data exported to {path}")
+                QMessageBox.information(self, "Exported", f"Scaled data exported to {path}")
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to export: {e}")
