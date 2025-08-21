@@ -128,11 +128,13 @@ class CenterScreen(QWidget):
         all_battery_ids = getattr(self.main_window, 'all_battery_ids', [])
         cycle_counts = getattr(self.main_window, 'cycle_counts', {})
         
-        self.table.setRowCount(len(all_battery_ids))
+        # Sort the battery IDs in ascending order
+        sorted_battery_ids = sorted(all_battery_ids)
+        
+        self.table.setRowCount(len(sorted_battery_ids))
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Battery ID", "Cycle Count", "Download Data"])
         
-        for row, bat_id in enumerate(all_battery_ids):
             self.table.setItem(row, 0, QTableWidgetItem(str(bat_id)))
             
             # Cycle count dropdown for this battery id
